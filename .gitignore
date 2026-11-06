@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dev-dist/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+# Archivos personales: nunca al repositorio
+*configuracion*.json
+*config*.privado.json
+bitacora-*.json
+*.respaldo.json
