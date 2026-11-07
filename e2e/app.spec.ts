@@ -298,6 +298,21 @@ test('borra la bóveda de prueba de la versión con PIN y empieza de cero', asyn
   expect(await page.evaluate(() => localStorage.getItem('bitacora.vault'))).toBeNull();
 });
 
+test('«Cómo funciona»: aviso la primera vez y guía en Ajustes', async ({ page }) => {
+  await setupManual(page);
+  const banner = page.getByRole('region', { name: 'Cómo funciona' });
+  await expect(banner).toContainText('¿Cómo funciona Bitácora?');
+  await banner.getByRole('button', { name: 'Ver' }).click();
+  const help = page.getByRole('dialog', { name: 'Cómo funciona' });
+  await expect(help).toContainText('Insignias');
+  await expect(help).toContainText(/semana victoriosa/i);
+  await help.getByRole('button', { name: 'Entendido' }).click();
+  await expect(banner).toHaveCount(0);
+  await nav(page, 'Ajustes');
+  await page.getByRole('button', { name: 'Ver', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Cómo funciona' })).toBeVisible();
+});
+
 test('la bienvenida funciona sin internet y explica cómo instalar', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('region', { name: 'Instalar la app' })).toContainText('«Instalar aplicación»');

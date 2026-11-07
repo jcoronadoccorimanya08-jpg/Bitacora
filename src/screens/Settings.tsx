@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { HowItWorks } from '../components/HowItWorks';
 import { Icon } from '../components/Icon';
 import { PatternPad } from '../components/PatternPad';
 import { checkForUpdate } from '../components/UpdateBanner';
@@ -38,6 +39,7 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
   const [pending, setPending] = useState<Pending>(null);
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [paste, setPaste] = useState<string | null>(null);
+  const [help, setHelp] = useState(false);
   const [newTrigger, setNewTrigger] = useState('');
   const [newHabit, setNewHabit] = useState('');
   const [bioSupport, setBioSupport] = useState<'yes' | 'maybe' | 'no' | null>(null);
@@ -320,6 +322,11 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
 
       <SectionTitle>App</SectionTitle>
       <div className="group">
+        <Item title="Cómo funciona" note="Todas las reglas, con tus números.">
+          <button type="button" className="btn sm" onClick={() => setHelp(true)}>
+            Ver
+          </button>
+        </Item>
         <Item
           title={installed ? 'Instalada en tu teléfono' : 'Instalar en tu teléfono'}
           note={installed ? 'Ábrela desde su ícono. Funciona sin internet.' : canInstall ? 'Queda con su ícono y funciona sin internet.' : 'En Chrome: menú ⋮ → «Instalar aplicación».'}
@@ -370,6 +377,7 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
         }}
       />
 
+      {help && <HowItWorks s={s} onClose={() => setHelp(false)} />}
       {overlay?.kind === 'pattern' && <ChangePattern onClose={() => setOverlay(null)} />}
       {overlay?.kind === 'backup' && (
         <BackupPattern

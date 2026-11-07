@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { celebrate } from '../components/Confetti';
 import { GoalCard } from '../components/GoalCard';
 import { Icon } from '../components/Icon';
+import { HowItWorks, WhatsNewBanner } from '../components/HowItWorks';
 import { InstallCard } from '../components/InstallCard';
 import { MoodPicker } from '../components/MoodPicker';
 import { UrgeOverlay } from '../components/UrgeOverlay';
@@ -56,6 +57,7 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
   const wild = wildcards(state);
   const sv = savings(s, state.days, today);
   const [urge, setUrge] = useState(false);
+  const [help, setHelp] = useState(false);
 
   const onMark = (habitId: string, value: Mark) => {
     if (!editable) return;
@@ -143,6 +145,7 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
 
       {!hasBio && <BioPromo />}
       <InstallCard appName="Bitácora" dismissible />
+      <WhatsNewBanner onOpen={() => setHelp(true)} />
 
       {phase === 'before' ? (
         <BeforeStart s={s} today={today} onGoRewards={() => onGo('premios')} />
@@ -299,6 +302,7 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
         </>
       )}
 
+      {help && <HowItWorks s={s} onClose={() => setHelp(false)} />}
       {urge && (
         <UrgeOverlay
           state={state}

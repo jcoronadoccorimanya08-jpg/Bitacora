@@ -2754,3 +2754,25 @@ dialog::backdrop {
 .mood-btn:disabled {
   opacity: 0.5;
 }
+
+/* ---------- Cómo funciona ---------- */
+.help {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 32px);
+}
+.help .title {
+  margin-bottom: 14px;
+}
+.help .card {
+  margin-top: 10px;
+}
+.help ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.help li + li {
+  margin-top: 6px;
+}
