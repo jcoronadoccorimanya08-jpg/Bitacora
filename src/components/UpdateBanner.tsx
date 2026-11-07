@@ -12,7 +12,11 @@ export async function checkForUpdate(): Promise<boolean> {
   return Boolean(registration.waiting || registration.installing);
 }
 
-export function UpdateBanner() {
+/**
+ * Registra el service worker desde la primera pantalla: así la app funciona sin internet
+ * y Chrome la puede instalar aunque todavía no hayas empezado tu ciclo.
+ */
+export function useServiceWorker() {
   const {
     needRefresh: [needRefresh],
     offlineReady: [offlineReady, setOfflineReady],
@@ -31,6 +35,10 @@ export function UpdateBanner() {
     }
   }, [offlineReady, setOfflineReady]);
 
+  return { needRefresh, update: () => void updateServiceWorker(true) };
+}
+
+export function UpdateBanner({ needRefresh, onUpdate }: { needRefresh: boolean; onUpdate: () => void }) {
   if (!needRefresh) return null;
   return (
     <div className="banner" role="status">
@@ -39,7 +47,7 @@ export function UpdateBanner() {
         <b>Hay una versión nueva</b>
         Tus datos se conservan.
       </div>
-      <button type="button" className="btn primary sm" onClick={() => void updateServiceWorker(true)}>
+      <button type="button" className="btn primary sm" onClick={onUpdate}>
         Actualizar
       </button>
     </div>

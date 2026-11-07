@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon';
+import { InstallCard } from '../components/InstallCard';
 import { APP_NAME } from '../lib/config';
 import { addDays, diffDays, formatLong, localDateOf, weekday, type ISODate } from '../lib/dates';
 import {
@@ -95,12 +96,25 @@ export function TodayScreen({ state, today, selected, onSelect, onGo, onBackup }
         </button>
       </header>
 
+      <InstallCard appName="Bitácora" dismissible />
+
       {phase === 'before' ? (
         <section className="card">
           <div className="card-title">Empieza el {formatLong(s.startDate)}</div>
           <p>Mientras tanto, define tus premios: uno por cada 7 días de racha.</p>
           <button type="button" className="btn primary block" style={{ marginTop: 14 }} onClick={() => onGo('premios')}>
             <Icon name="gift" size={18} /> Definir mis premios
+          </button>
+          <button
+            type="button"
+            className="btn block"
+            style={{ marginTop: 8 }}
+            onClick={() => {
+              actions.setStartDate(today);
+              toast('Tu ciclo empieza hoy.', 'success');
+            }}
+          >
+            <Icon name="calendar" size={18} /> Prefiero empezar hoy
           </button>
         </section>
       ) : (

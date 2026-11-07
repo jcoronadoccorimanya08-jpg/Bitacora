@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { PinPad } from '../components/PinPad';
 import { ConfirmDialog } from '../components/ui';
 import { APP_NAME } from '../lib/config';
 import { haptic } from '../lib/feedback';
 import { unlock, wipeAll } from '../lib/store';
 
-export function LockScreen() {
+export function LockScreen({ updateBanner }: { updateBanner?: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [fails, setFails] = useState(0);
@@ -43,6 +43,7 @@ export function LockScreen() {
 
   return (
     <main className="lock">
+      {updateBanner}
       <img className="lock-logo" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={64} height={64} />
       <div>
         <h1>{APP_NAME}</h1>

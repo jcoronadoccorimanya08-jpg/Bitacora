@@ -83,3 +83,40 @@ test('el candado bloquea la app al instante', async ({ page }) => {
   await page.getByRole('button', { name: 'Bloquear ahora' }).click();
   await expect(page.getByText('Ingresa tu PIN')).toBeVisible();
 });
+
+test('la bienvenida funciona sin internet y explica cómo instalar', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.getByRole('region', { name: 'Instalar la app' })).toContainText('«Instalar aplicación»');
+  await expect
+    .poll(() => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length), { timeout: 15_000 })
+    .toBeGreaterThan(0);
+});
+
+test('se puede pegar la configuración como texto', async ({ page }) => {
+  await page.clock.install({ time: MONDAY_NIGHT });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Pegar mi configuración' }).click();
+  const config = {
+    app: 'bitacora',
+    kind: 'config',
+    habits: [{ name: 'Hábito pegado', q: '¿Día limpio?', ok: 'Limpio', fail: 'Caí', phrase: '' }],
+    triggers: ['Estrés'],
+  };
+  await page.getByLabel('Configuración en texto').fill(JSON.stringify(config, null, 2));
+  await page.getByRole('button', { name: 'Usar esta configuración' }).click();
+  await expect(page.getByText('1. Hábito pegado')).toBeVisible();
+});
+
+test('si el ciclo empieza el lunes, se puede empezar hoy', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-06T20:00:00-04:00') }); // viernes
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Configurar a mano' }).click();
+  await page.getByRole('button', { name: '+ Cigarro' }).click();
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.getByRole('button', { name: 'Siguiente' }).click(); // por defecto: el lunes
+  await typePin(page, '1234', 'Siguiente');
+  await typePin(page, '1234', 'Crear');
+  await expect(page.getByRole('heading', { name: 'Tu ciclo está por empezar' })).toBeVisible();
+  await page.getByRole('button', { name: 'Prefiero empezar hoy' }).click();
+  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
+});

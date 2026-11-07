@@ -775,7 +775,7 @@ p {
 .banner .txt {
   flex: 1;
 }
-.banner .txt b {
+.banner .txt > b:first-child {
   display: block;
   font-weight: 680;
 }
@@ -2009,4 +2009,32 @@ dialog::backdrop {
   flex: none;
   color: var(--gold);
   margin-top: 1px;
+}
+
+.banner.install {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.banner.install > svg {
+  color: var(--accent);
+}
+.paste-box {
+  display: grid;
+  gap: 8px;
+}
+.paste-box textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+}
+.paste-box textarea:focus {
+  outline: none;
+  border-color: var(--info);
+  box-shadow: 0 0 0 3px var(--info-soft);
 }

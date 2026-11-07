@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BottomNav, ToastHost, type Tab } from './components/ui';
-import { UpdateBanner } from './components/UpdateBanner';
+import { UpdateBanner, useServiceWorker } from './components/UpdateBanner';
 import { canShareFiles, downloadText, serializeBackup, shareText } from './lib/backup';
 import { isEarned, lastPlayableDay, milestones, streakStats } from './lib/engine';
 import { toast } from './lib/feedback';
@@ -43,6 +43,7 @@ function useTheme(theme: Theme) {
 }
 
 export function App() {
+  const sw = useServiceWorker();
   const { phase, state } = useStore();
   const today = useToday();
   const [tab, setTab] = useState<Tab>('hoy');
@@ -94,17 +95,19 @@ export function App() {
   ) : null;
 
   if (phase === 'loading') return <div className="app" aria-busy="true" />;
+  const updateBanner = <UpdateBanner needRefresh={sw.needRefresh} onUpdate={sw.update} />;
+
   if (phase === 'setup')
     return (
       <>
-        <Setup today={today} />
+        <Setup today={today} updateBanner={updateBanner} />
         <ToastHost />
       </>
     );
   if (phase === 'locked' || !state)
     return (
       <>
-        <LockScreen />
+        <LockScreen updateBanner={updateBanner} />
         <ToastHost />
       </>
     );
@@ -133,7 +136,7 @@ export function App() {
   return (
     <>
       <div className="app">
-        <UpdateBanner />
+        {updateBanner}
         {tab === 'hoy' && (
           <TodayScreen
             state={state}

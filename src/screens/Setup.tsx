@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
+import { InstallCard } from '../components/InstallCard';
 import { Icon } from '../components/Icon';
 import { PinPad } from '../components/PinPad';
 import { APP_NAME, DEFAULT_TRIGGERS, HABIT_SUGGESTIONS, MAX_HABITS, NEW_HABIT, type HabitTemplate } from '../lib/config';
@@ -12,7 +13,7 @@ import type { Habit } from '../lib/types';
 
 type Step = 'welcome' | 'backup' | 'habits' | 'start' | 'pin' | 'pin2';
 
-export function Setup({ today }: { today: ISODate }) {
+export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: ReactNode }) {
   const [step, setStep] = useState<Step>('welcome');
   const [habits, setHabits] = useState<Habit[]>([]);
   const [triggers, setTriggers] = useState<string[]>(DEFAULT_TRIGGERS);
@@ -27,6 +28,8 @@ export function Setup({ today }: { today: ISODate }) {
   const [busy, setBusy] = useState(false);
   const [sealed, setSealed] = useState<Sealed | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pasting, setPasting] = useState(false);
+  const [pasted, setPasted] = useState('');
 
   const startDate = startChoice === 'today' ? today : startChoice === 'monday' ? monday : customDate;
 
@@ -45,9 +48,11 @@ export function Setup({ today }: { today: ISODate }) {
       return next;
     });
 
-  const onFile = async (file: File) => {
+  const onFile = async (file: File) => loadText(await file.text());
+
+  const loadText = (text: string) => {
     try {
-      const parsed = parseFile(await file.text());
+      const parsed = parseFile(text);
       if (parsed.kind === 'config') {
         setHabits(parsed.habits);
         setTriggers(parsed.triggers);
@@ -85,11 +90,13 @@ export function Setup({ today }: { today: ISODate }) {
   if (step === 'welcome') {
     return (
       <main className="onb">
+        {updateBanner}
         <img className="onb-logo" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={68} height={68} />
         <div>
           <h1>{APP_NAME}</h1>
           <p className="lema">Un día limpio a la vez</p>
         </div>
+        <InstallCard appName="Bitácora" />
         <ul className="pillars">
           <li>
             <span className="pi">
@@ -123,7 +130,26 @@ export function Setup({ today }: { today: ISODate }) {
           <button type="button" className="btn primary block" onClick={() => fileRef.current?.click()}>
             <Icon name="upload" size={18} /> Cargar mi configuración o un respaldo
           </button>
-          <button type="button" className="btn block" onClick={() => setStep('habits')}>
+          <button type="button" className="btn block" onClick={() => setPasting((v) => !v)} aria-expanded={pasting}>
+            <Icon name="copy" size={18} /> Pegar mi configuración
+          </button>
+          {pasting && (
+            <div className="paste-box">
+              <textarea
+                value={pasted}
+                onChange={(e) => setPasted(e.target.value)}
+                placeholder='Pega aquí el texto que empieza con {"app": "bitacora"'
+                aria-label="Configuración en texto"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+              />
+              <button type="button" className="btn primary block" disabled={!pasted.trim()} onClick={() => loadText(pasted)}>
+                Usar esta configuración
+              </button>
+            </div>
+          )}
+          <button type="button" className="btn ghost block" onClick={() => setStep('habits')}>
             Configurar a mano
           </button>
         </div>

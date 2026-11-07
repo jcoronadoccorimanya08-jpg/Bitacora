@@ -7,7 +7,7 @@ Es independiente de cualquier otra app: no compartas código en tiempo de ejecuc
 
 - **El repositorio y el sitio publicado son públicos.** Nunca pongas en el código, en los commits ni en los issues datos de la persona: sus hábitos, frases, disparadores propios, nombre, horarios ni respaldos.
 - Lo personal entra a la app **solo desde el teléfono**: configuración a mano o un archivo `config` que nunca se sube al repositorio (`.gitignore` bloquea los nombres habituales).
-- Los datos se guardan **solo cifrados** (`src/lib/crypto.ts` y `src/lib/vault.ts`): AES-GCM con clave PBKDF2 derivada del PIN. Nunca guardes el PIN ni datos en texto plano. La única preferencia sin cifrar es el tema (`bitacora.theme`).
+- Los datos se guardan **solo cifrados** (`src/lib/crypto.ts` y `src/lib/vault.ts`): AES-GCM con clave PBKDF2 derivada del PIN. Nunca guardes el PIN ni datos en texto plano. Las únicas preferencias sin cifrar son el tema (`bitacora.theme`) y la fecha en que se ocultó el aviso de instalación (`bitacora.install-hint`); ninguna dice nada de la persona.
 - Sin analítica, sin servidores y sin librerías que se conecten a internet.
 
 ## Reglas del producto

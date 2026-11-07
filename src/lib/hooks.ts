@@ -35,38 +35,42 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
+let installedNow = false;
 const installListeners = new Set<() => void>();
 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
+    // Sin preventDefault(): Chrome también muestra su propio aviso «Instalar». Guardamos el evento
+    // para el botón de la app.
     deferredPrompt = e as BeforeInstallPromptEvent;
     installListeners.forEach((l) => l());
   });
   window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
+    installedNow = true;
     installListeners.forEach((l) => l());
   });
 }
 
-/** Botón "Instalar app" de Chrome en Android. */
+/** Instalación en Android: botón propio cuando Chrome lo permite, y si ya se instaló. */
 export function useInstallPrompt() {
   const standalone = useMediaQuery('(display-mode: standalone)');
-  const [canInstall, setCanInstall] = useState(() => deferredPrompt !== null);
+  const [, rerender] = useState(0);
   useEffect(() => {
-    const update = () => setCanInstall(deferredPrompt !== null);
+    const update = () => rerender((n) => n + 1);
     installListeners.add(update);
     return () => {
       installListeners.delete(update);
     };
   }, []);
   const install = async () => {
-    if (!deferredPrompt) return false;
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
+    const prompt = deferredPrompt;
+    if (!prompt) return false;
+    await prompt.prompt();
+    const choice = await prompt.userChoice;
     deferredPrompt = null;
-    setCanInstall(false);
+    rerender((n) => n + 1);
     return choice.outcome === 'accepted';
   };
-  return { installed: standalone, canInstall: canInstall && !standalone, install };
+  return { installed: standalone, canInstall: deferredPrompt !== null && !standalone, installedNow, install };
 }
