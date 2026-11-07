@@ -22,7 +22,7 @@ import {
 import type { ISODate } from './dates';
 import { chestFromRoll } from './rewards';
 import { sanitizeState, slugId } from './sanitize';
-import type { AppState, Chest, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings } from './types';
+import type { Accent, AppState, Chest, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings, TextSize } from './types';
 import { deleteVault, readVault, removeLegacyVault, requestPersistence, writeVault, type LockRecord, type VaultRecord } from './vault';
 
 export type Phase = 'loading' | 'setup' | 'locked' | 'unlocked';
@@ -363,6 +363,24 @@ export const actions = {
 
   setTheme(theme: Settings['theme']) {
     updateSettings((s) => ({ ...s, theme }));
+  },
+
+  setAccent(accent: Accent) {
+    updateSettings((s) => {
+      const next = { ...s };
+      if (accent === 'verde') delete next.accent;
+      else next.accent = accent;
+      return next;
+    });
+  },
+
+  setTextSize(size: TextSize) {
+    updateSettings((s) => {
+      const next = { ...s };
+      if (size === 'normal') delete next.textSize;
+      else next.textSize = size;
+      return next;
+    });
   },
 
   setAutoLock(minutes: number) {

@@ -44,10 +44,14 @@
   --text: #e4edea;
   --muted: #94a49f;
   --faint: #6e7f7a;
-  --accent: #3bbfa7;
-  --accent-ink: #06201a;
-  --accent-soft: #163a33;
-  --accent-line: rgba(59, 191, 167, 0.45);
+  --acc-verde: #3bbfa7;
+  --acc-verde-ink: #06201a;
+  --acc-violeta: #b69cff;
+  --acc-violeta-ink: #1d0f3d;
+  --acc-lima: #b8e65a;
+  --acc-lima-ink: #1b2a05;
+  --acc-rosa: #ff8ac4;
+  --acc-rosa-ink: #3a0a22;
   --fail: #ee6f5b;
   --fail-ink: #2a0b05;
   --fail-soft: #3d1e19;
@@ -71,9 +75,6 @@
   --danger: #ee6f5b;
   --danger-soft: rgba(238, 111, 91, 0.14);
   --heat-0: #1b2623;
-  --heat-1: rgba(59, 191, 167, 0.3);
-  --heat-2: rgba(59, 191, 167, 0.6);
-  --heat-3: #3bbfa7;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   --nav-bg: rgba(13, 20, 18, 0.9);
   --toast-bg: #e4edea;
@@ -81,7 +82,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']) {
+  :root:not([data-theme='dark']):not([data-theme='black']) {
     color-scheme: light;
     --bg: #eef3f1;
     --surface: #ffffff;
@@ -91,10 +92,14 @@
     --text: #13211d;
     --muted: #5b6b66;
     --faint: #7f8f8a;
-    --accent: #0e7c6b;
-    --accent-ink: #ffffff;
-    --accent-soft: #dcefea;
-    --accent-line: rgba(14, 124, 107, 0.4);
+    --acc-verde: #0e7c6b;
+    --acc-verde-ink: #ffffff;
+    --acc-violeta: #6b46d1;
+    --acc-violeta-ink: #ffffff;
+    --acc-lima: #4d7a0c;
+    --acc-lima-ink: #ffffff;
+    --acc-rosa: #c2307a;
+    --acc-rosa-ink: #ffffff;
     --fail: #b8432f;
     --fail-ink: #ffffff;
     --fail-soft: #f6e1dc;
@@ -118,9 +123,6 @@
     --danger: #b8432f;
     --danger-soft: rgba(184, 67, 47, 0.1);
     --heat-0: #e2e9e6;
-    --heat-1: rgba(14, 124, 107, 0.25);
-    --heat-2: rgba(14, 124, 107, 0.55);
-    --heat-3: #0e7c6b;
     --shadow: 0 10px 28px rgba(19, 33, 29, 0.12);
     --nav-bg: rgba(255, 255, 255, 0.92);
     --toast-bg: #13211d;
@@ -138,10 +140,14 @@
   --text: #13211d;
   --muted: #5b6b66;
   --faint: #7f8f8a;
-  --accent: #0e7c6b;
-  --accent-ink: #ffffff;
-  --accent-soft: #dcefea;
-  --accent-line: rgba(14, 124, 107, 0.4);
+  --acc-verde: #0e7c6b;
+  --acc-verde-ink: #ffffff;
+  --acc-violeta: #6b46d1;
+  --acc-violeta-ink: #ffffff;
+  --acc-lima: #4d7a0c;
+  --acc-lima-ink: #ffffff;
+  --acc-rosa: #c2307a;
+  --acc-rosa-ink: #ffffff;
   --fail: #b8432f;
   --fail-ink: #ffffff;
   --fail-soft: #f6e1dc;
@@ -165,13 +171,77 @@
   --danger: #b8432f;
   --danger-soft: rgba(184, 67, 47, 0.1);
   --heat-0: #e2e9e6;
-  --heat-1: rgba(14, 124, 107, 0.25);
-  --heat-2: rgba(14, 124, 107, 0.55);
-  --heat-3: #0e7c6b;
   --shadow: 0 10px 28px rgba(19, 33, 29, 0.12);
   --nav-bg: rgba(255, 255, 255, 0.92);
   --toast-bg: #13211d;
   --toast-ink: #ffffff;
+}
+
+/* ---------- Apariencia: color elegido, negro puro y letra grande ---------- */
+:root {
+  --acc: var(--acc-verde);
+  --acc-ink: var(--acc-verde-ink);
+  --accent: var(--acc);
+  --accent-ink: var(--acc-ink);
+  --accent-soft: color-mix(in srgb, var(--acc) 11%, transparent);
+  --accent-line: color-mix(in srgb, var(--acc) 45%, transparent);
+  --heat-1: color-mix(in srgb, var(--acc) 26%, transparent);
+  --heat-2: color-mix(in srgb, var(--acc) 55%, transparent);
+  --heat-3: var(--acc);
+}
+:root[data-accent='violeta'] {
+  --acc: var(--acc-violeta);
+  --acc-ink: var(--acc-violeta-ink);
+}
+:root[data-accent='lima'] {
+  --acc: var(--acc-lima);
+  --acc-ink: var(--acc-lima-ink);
+}
+:root[data-accent='rosa'] {
+  --acc: var(--acc-rosa);
+  --acc-ink: var(--acc-rosa-ink);
+}
+:root[data-theme='black'] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #0c0c0e;
+  --surface-2: #151518;
+  --line: #24242a;
+  --line-strong: #34343c;
+  --future: #151518;
+  --heat-0: #151518;
+  --nav-bg: rgba(0, 0, 0, 0.92);
+  --toast-ink: #000000;
+}
+:root[data-size='grande'] body {
+  zoom: 1.1;
+}
+.swatches {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.swatch {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px var(--text);
+}
+.swatch.sw-verde {
+  background: var(--acc-verde);
+}
+.swatch.sw-violeta {
+  background: var(--acc-violeta);
+}
+.swatch.sw-lima {
+  background: var(--acc-lima);
+}
+.swatch.sw-rosa {
+  background: var(--acc-rosa);
 }
 
 /* ---------- Base ---------- */

@@ -313,6 +313,26 @@ test('«Cómo funciona»: aviso la primera vez y guía en Ajustes', async ({ pag
   await expect(page.getByRole('dialog', { name: 'Cómo funciona' })).toBeVisible();
 });
 
+test('apariencia: negro puro, color y letra grande, también en el bloqueo', async ({ page }) => {
+  await setupManual(page);
+  await nav(page, 'Ajustes');
+  await page.getByRole('group', { name: 'Tema' }).getByRole('button', { name: 'Negro' }).click();
+  await page.getByRole('group', { name: 'Color' }).getByRole('button', { name: 'Violeta' }).click();
+  await page.getByRole('group', { name: 'Tamaño de letra' }).getByRole('button', { name: 'Grande' }).click();
+  const html = page.locator('html');
+  await expect(html).toHaveAttribute('data-theme', 'black');
+  await expect(html).toHaveAttribute('data-accent', 'violeta');
+  await expect(html).toHaveAttribute('data-size', 'grande');
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(0, 0, 0)');
+  await page.reload();
+  await expect(page.getByText('Dibuja tu patrón')).toBeVisible();
+  await expect(html).toHaveAttribute('data-theme', 'black');
+  await expect(html).toHaveAttribute('data-accent', 'violeta');
+  await draw(page, PATTERN);
+  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
+  await expect(html).toHaveAttribute('data-size', 'grande');
+});
+
 test('la bienvenida funciona sin internet y explica cómo instalar', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('region', { name: 'Instalar la app' })).toContainText('«Instalar aplicación»');

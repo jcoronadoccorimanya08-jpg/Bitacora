@@ -37,7 +37,9 @@ export interface GrandPrize {
   weeks?: number;
 }
 
-export type Theme = 'system' | 'dark' | 'light';
+export type Theme = 'system' | 'dark' | 'light' | 'black';
+export type Accent = 'verde' | 'violeta' | 'lima' | 'rosa';
+export type TextSize = 'normal' | 'grande';
 
 export interface Settings {
   startDate: ISODate;
@@ -49,6 +51,9 @@ export interface Settings {
   /** Bs que sumas cuando tocas «Dije no a una fiesta» (0 = botón oculto). */
   partyBonus: number;
   theme: Theme;
+  /** Opcionales: los estados guardados antes no los tienen (verde y normal). */
+  accent?: Accent;
+  textSize?: TextSize;
   autoLockMinutes: number;
   createdAt: string;
   lastBackupAt?: string;

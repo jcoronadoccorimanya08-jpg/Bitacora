@@ -1,6 +1,7 @@
 /** Validación de datos descifrados, respaldos y archivos de configuración. */
 import { CYCLE_LENGTH, DEFAULT_TRIGGERS, MAX_HABITS, MAX_TRIGGERS, NEW_HABIT } from './config';
 import { isValidISODate } from './dates';
+import { isAccent, isTextSize, isTheme } from './look';
 import type { AppState, Chest, ChestOutcome, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings, Theme } from './types';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -101,7 +102,7 @@ function sanitizeSettings(v: unknown): Settings | null {
   if (!isObj(v) || !isValidISODate(v.startDate)) return null;
   const habits = sanitizeHabits(v.habits);
   if (!habits.length) return null;
-  const theme: Theme = v.theme === 'dark' || v.theme === 'light' ? v.theme : 'system';
+  const theme: Theme = isTheme(v.theme) ? v.theme : 'system';
   const s: Settings = {
     startDate: v.startDate,
     cycleLength: Math.round(num(v.cycleLength, 7, 365, CYCLE_LENGTH)),
@@ -116,6 +117,8 @@ function sanitizeSettings(v: unknown): Settings | null {
   };
   const lb = str(v.lastBackupAt, 40);
   if (lb) s.lastBackupAt = lb;
+  if (isAccent(v.accent) && v.accent !== 'verde') s.accent = v.accent;
+  if (isTextSize(v.textSize) && v.textSize !== 'normal') s.textSize = v.textSize;
   return s;
 }
 

@@ -8,7 +8,7 @@ import { Icon } from './Icon';
 /** Lo nuevo de esta versión (se muestra una vez después de actualizar). */
 export const WHATS_NEW = {
   version: __APP_VERSION__,
-  items: [`Semana victoriosa con ${OTHER_NAME}.`, 'Insignias cada 2 semanas, de Bronce a Leyenda.', 'Ánimo del día con un toque.'],
+  items: [`Semana victoriosa con ${OTHER_NAME}.`, 'Insignias cada 2 semanas y ánimo del día.', 'Apariencia: negro puro, color y letra grande (Ajustes).'],
 };
 
 const SEEN_KEY = 'bitacora.seen-version';

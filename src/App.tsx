@@ -6,11 +6,11 @@ import { canShareFiles, downloadBackupText, serializeBackup, shareBackupText } f
 import { lastPlayableDay, streakStats, weeklyPcts } from './lib/engine';
 import { toast } from './lib/feedback';
 import { useMediaQuery, useToday } from './lib/hooks';
+import { applyLook, readLook, type Look } from './lib/look';
 import { claimable, grandStatus, pendingChests, steps, withClaims } from './lib/rewards';
 import { actions, currentBackup, getState, lock, onSaveError, useStore } from './lib/store';
 import { teamFor, writeShare } from './lib/team';
 import type { ISODate } from './lib/dates';
-import type { Theme } from './lib/types';
 import { InsightsScreen } from './screens/Insights';
 import { LockScreen } from './screens/Lock';
 import { RewardsScreen } from './screens/Rewards';
@@ -18,31 +18,12 @@ import { SettingsScreen } from './screens/Settings';
 import { Setup } from './screens/Setup';
 import { TodayScreen } from './screens/Today';
 
-const THEME_KEY = 'bitacora.theme';
-
-function readThemePref(): Theme {
-  try {
-    const t = localStorage.getItem(THEME_KEY);
-    return t === 'dark' || t === 'light' ? t : 'system';
-  } catch {
-    return 'system';
-  }
-}
-
-function useTheme(theme: Theme) {
+function useLook(look: Look) {
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
   useLayoutEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'system') delete root.dataset.theme;
-    else root.dataset.theme = theme;
-    const dark = theme === 'dark' || (theme === 'system' && prefersDark);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0D1412' : '#EEF3F1');
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      /* sin preferencia guardada */
-    }
-  }, [theme, prefersDark]);
+    applyLook(look, prefersDark);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [look.theme, look.accent, look.size, prefersDark]);
 }
 
 export function App() {
@@ -55,7 +36,7 @@ export function App() {
   const hiddenAt = useRef<number | null>(null);
   const lastToday = useRef(today);
 
-  useTheme(state?.settings.theme ?? readThemePref());
+  useLook(state ? { theme: state.settings.theme, accent: state.settings.accent ?? 'verde', size: state.settings.textSize ?? 'normal' } : readLook());
   useEffect(() => onSaveError((m) => toast(m, 'error')), []);
 
   // Semana victoriosa: publica solo tus porcentajes semanales (números) para que Val Q los lea.

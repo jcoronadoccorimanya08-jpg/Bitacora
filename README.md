@@ -25,6 +25,8 @@ Funciona sin internet, se instala en el celular y guarda todo **cifrado** en el 
 - **Ánimo del día:** un toque en Hoy; en Análisis ves cómo se relaciona con tus días limpios.
 - **Botón de urgencia:** cuando llega el antojo, muestra tu gran premio, tu frase y tu ahorro, y te acompaña 10 minutos respirando.
 - **Análisis:** tu montaña (promedio de 7 días), semanas, lo que ganaste por hábito, historial, disparadores y caídas por día.
+- **Apariencia:** tema automático, oscuro, **negro puro** o claro; cuatro colores y letra grande (Ajustes → Apariencia).
+- **Cómo funciona:** todas las reglas, con tus números, en Ajustes → App.
 - **Reporte:** una **imagen** para compartir (no muestra tus hábitos ni tus disparadores) y un texto para pedirle a Claude un análisis sin juicios.
 
 ## Privacidad
