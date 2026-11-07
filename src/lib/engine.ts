@@ -230,3 +230,23 @@ export function weekPct(s: Settings, days: Days, weekIndex: number, today: ISODa
   if (!dates.length) return null;
   return dates.reduce((sum, d) => sum + dayPct(days, d, s.habits), 0) / dates.length;
 }
+
+/** Semanas de 7 días desde el inicio del ciclo (la última puede ser más corta). */
+export function cycleWeeks(s: Cycle): { index: number; start: ISODate; end: ISODate }[] {
+  const out: { index: number; start: ISODate; end: ISODate }[] = [];
+  for (let i = 0; i * 7 < s.cycleLength; i++) {
+    const start = addDays(s.startDate, i * 7);
+    out.push({ index: i + 1, start, end: minDate(addDays(start, 6), cycleEnd(s)) });
+  }
+  return out;
+}
+
+/** Porcentaje de cada semana que ya empezó, por fecha de inicio (lo que se comparte para la semana victoriosa). */
+export function weeklyPcts(s: Settings, days: Days, today: ISODate): Record<ISODate, number> {
+  const out: Record<ISODate, number> = {};
+  for (const w of cycleWeeks(s)) {
+    const p = weekPct(s, days, w.index, today);
+    if (p !== null) out[w.start] = Math.round(p * 10) / 10;
+  }
+  return out;
+}

@@ -473,7 +473,12 @@ function GrandEditor({ grand, defaultDate }: { grand: GrandPrize | null; default
   const [name, setName] = useState(grand?.name ?? '');
   const [price, setPrice] = useState(grand?.price ? String(grand.price) : '');
   const [date, setDate] = useState(grand?.date ?? '');
-  const dirty = name.trim() !== (grand?.name ?? '') || price !== (grand?.price ? String(grand.price) : '') || date !== (grand?.date ?? '');
+  const [weeks, setWeeks] = useState(grand?.weeks ? String(grand.weeks) : '');
+  const dirty =
+    name.trim() !== (grand?.name ?? '') ||
+    price !== (grand?.price ? String(grand.price) : '') ||
+    date !== (grand?.date ?? '') ||
+    weeks !== (grand?.weeks ? String(grand.weeks) : '');
   return (
     <div className="item col">
       <div className="txt">
@@ -494,6 +499,16 @@ function GrandEditor({ grand, defaultDate }: { grand: GrandPrize | null; default
           <input className="field" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
+      <label className="lbl-field">
+        Semanas victoriosas necesarias (con Val Q)
+        <input
+          className="field"
+          value={weeks}
+          inputMode="numeric"
+          placeholder="Sin condición"
+          onChange={(e) => setWeeks(e.target.value.replace(/\D/g, '').slice(0, 2))}
+        />
+      </label>
       <button
         type="button"
         className="btn primary block"
@@ -503,6 +518,7 @@ function GrandEditor({ grand, defaultDate }: { grand: GrandPrize | null; default
           const g: GrandPrize = { name: name.trim() };
           if (price) g.price = Number(price);
           if (isValidISODate(date)) g.date = date;
+          if (Number(weeks) > 0) g.weeks = Math.min(13, Number(weeks));
           actions.setGrand(g);
           toast('Gran premio guardado.', 'success');
         }}

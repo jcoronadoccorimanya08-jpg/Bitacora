@@ -3,11 +3,12 @@ import { celebrate } from '../components/Confetti';
 import { Icon } from '../components/Icon';
 import { ConfirmDialog, ScreenHeader, SectionTitle } from '../components/ui';
 import { CHEST_LABEL } from '../lib/config';
-import { formatLong, formatShort, localDateOf, type ISODate } from '../lib/dates';
+import { formatLong, formatShort, localDateOf, plural, type ISODate } from '../lib/dates';
 import { streakStats } from '../lib/engine';
 import { haptic, toast } from '../lib/feedback';
 import { grandStatus, pendingChests, steps, wallet, wildcards, withClaims, type Step } from '../lib/rewards';
 import { actions } from '../lib/store';
+import { OTHER_NAME, VICTORY_PCT, teamFor } from '../lib/team';
 import type { AppState } from '../lib/types';
 
 type Prize = Extract<Step, { kind: 'prize' }>;
@@ -20,7 +21,8 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
   const w = wallet(s, state, today);
   const wild = wildcards(state);
   const chests = pendingChests(list, state);
-  const g = grandStatus(s, state, today);
+  const team = teamFor(s, state.days, today);
+  const g = grandStatus(s, state, today, team.victories);
   const [confirm, setConfirm] = useState<Claim>(null);
   const [editing, setEditing] = useState<number | null>(null);
 
@@ -94,9 +96,26 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
                   : `${formatLong(g.target)}${s.grand.price ? ` · Bs ${s.grand.price}` : ''}`}
               </div>
             </div>
-            {g.kind === 'locked' && <span className="badge active">Faltan {g.daysLeft}</span>}
+            {g.kind === 'locked' && g.daysLeft > 0 && <span className="badge active">Faltan {g.daysLeft}</span>}
             {g.kind === 'claimed' && <span className="badge claimed">Reclamado</span>}
           </div>
+          {g.kind !== 'claimed' && g.required > 0 && (
+            <>
+              <div className="reward-progress">
+                <div className="bar gold">
+                  <i style={{ width: `${Math.min(100, Math.round((g.victories / g.required) * 100))}%` }} />
+                </div>
+                {g.victories}/{g.required} semanas
+              </div>
+              <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+                {!team.other
+                  ? `Semana victoriosa: el promedio con ${OTHER_NAME} llega a ${VICTORY_PCT} %. Abre ${OTHER_NAME} en este teléfono para sumar sus semanas.`
+                  : !team.aligned
+                    ? `${OTHER_NAME} tiene otro inicio de ciclo. Pon la misma fecha en las dos apps para que las semanas coincidan.`
+                    : `Semana victoriosa: el promedio con ${OTHER_NAME} llega a ${VICTORY_PCT} %.`}
+              </p>
+            </>
+          )}
           {g.kind === 'locked' && s.grand.price ? (
             <div className="reward-progress">
               <div className="bar">
@@ -105,6 +124,12 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
               Bs {Math.max(0, w.balance)}/{s.grand.price}
             </div>
           ) : null}
+          {g.kind === 'locked' && g.daysLeft <= 0 && (
+            <p className="muted" style={{ marginTop: 8, fontSize: 13.5 }}>
+              Te faltaron {plural(g.required - g.victories, 'semana victoriosa', 'semanas victoriosas')}. Lo que lograste se queda contigo: va de nuevo en tu
+              próximo ciclo.
+            </p>
+          )}
           {g.kind === 'available' && (
             <button
               type="button"

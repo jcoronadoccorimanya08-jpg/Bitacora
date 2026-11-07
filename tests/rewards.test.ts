@@ -51,8 +51,8 @@ describe('ahorro disponible y gran premio', () => {
 
   it('el gran premio se reclama desde el día 90 (o su fecha)', () => {
     const st = initialState({ startDate: START, habits: H, grand: { name: 'Gran premio', price: 500 } });
-    expect(grandStatus(st.settings, st, '2026-11-08')).toEqual({ kind: 'locked', target: '2027-02-05', daysLeft: 89 });
-    expect(grandStatus(st.settings, st, '2027-02-05')).toEqual({ kind: 'available', target: '2027-02-05' });
+    expect(grandStatus(st.settings, st, '2026-11-08')).toEqual({ kind: 'locked', target: '2027-02-05', daysLeft: 89, victories: 0, required: 0 });
+    expect(grandStatus(st.settings, st, '2027-02-05')).toEqual({ kind: 'available', target: '2027-02-05', victories: 0, required: 0 });
     st.claims.grand = { claimedAt: 'x', price: 500 };
     expect(grandStatus(st.settings, st, '2027-02-06')).toEqual({ kind: 'claimed', claimedAt: 'x' });
     const dated = initialState({ startDate: START, habits: H, grand: { name: 'G', date: '2026-12-22' } });

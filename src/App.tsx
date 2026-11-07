@@ -3,11 +3,12 @@ import { ConfettiHost } from './components/Confetti';
 import { BottomNav, ToastHost, type Tab } from './components/ui';
 import { UpdateBanner, useServiceWorker } from './components/UpdateBanner';
 import { canShareFiles, downloadBackupText, serializeBackup, shareBackupText } from './lib/backup';
-import { lastPlayableDay, streakStats } from './lib/engine';
+import { lastPlayableDay, streakStats, weeklyPcts } from './lib/engine';
 import { toast } from './lib/feedback';
 import { useMediaQuery, useToday } from './lib/hooks';
 import { claimable, grandStatus, pendingChests, steps, withClaims } from './lib/rewards';
 import { actions, currentBackup, getState, lock, onSaveError, useStore } from './lib/store';
+import { teamFor, writeShare } from './lib/team';
 import type { ISODate } from './lib/dates';
 import type { Theme } from './lib/types';
 import { InsightsScreen } from './screens/Insights';
@@ -56,6 +57,12 @@ export function App() {
 
   useTheme(state?.settings.theme ?? readThemePref());
   useEffect(() => onSaveError((m) => toast(m, 'error')), []);
+
+  // Semana victoriosa: publica solo tus porcentajes semanales (números) para que Val Q los lea.
+  useEffect(() => {
+    if (!state) return;
+    writeShare({ start: state.settings.startDate, weeks: weeklyPcts(state.settings, state.days, today), grandClaimed: Boolean(state.claims.grand) });
+  }, [state, today]);
 
   // Bloqueo automático y cortina de privacidad al salir de la app.
   useEffect(() => {
@@ -113,7 +120,7 @@ export function App() {
   const playable = lastPlayableDay(s, today);
   const sel = today < s.startDate ? today : selected < s.startDate ? s.startDate : selected > playable ? playable : selected;
   const list = withClaims(steps(s, streakStats(s, state.days, today).best), state);
-  const badge = claimable(list).length + pendingChests(list, state).length + (grandStatus(s, state, today).kind === 'available' ? 1 : 0);
+  const badge = claimable(list).length + pendingChests(list, state).length + (grandStatus(s, state, today, teamFor(s, state.days, today).victories).kind === 'available' ? 1 : 0);
 
   const quickBackup = async () => {
     try {

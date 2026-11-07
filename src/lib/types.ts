@@ -33,6 +33,8 @@ export interface GrandPrize {
   name: string;
   price?: number;
   date?: ISODate;
+  /** Semanas victoriosas (con Val Q) necesarias para reclamarlo; sin este campo, no hay condición. */
+  weeks?: number;
 }
 
 export type Theme = 'system' | 'dark' | 'light';

@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef } from 'react';
 import { Mountain } from '../components/Mountain';
 import { ReportCard } from '../components/ReportCard';
 import { ScreenHeader, SectionTitle } from '../components/ui';
-import { STEP } from '../lib/config';
 import { addDays, formatLong, formatRange, maxDate, minDate, rangeDates, type ISODate } from '../lib/dates';
 import {
   cleanDaysIn,
@@ -17,9 +16,9 @@ import {
   savings,
   streakStats,
   triggerCounts,
-  weekPct,
 } from '../lib/engine';
 import { buildReport, formatHours } from '../lib/report';
+import { OTHER_NAME, VICTORY_PCT, teamFor } from '../lib/team';
 import type { AppState } from '../lib/types';
 
 const DIAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -39,8 +38,8 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
   const worstDay = byDay.some((n) => n > 0) ? ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][byDay.indexOf(Math.max(...byDay))] : null;
   const series = dailySeries(s, state.days, today);
   const sv = savings(s, state.days, today);
-  const weeks = Math.ceil(s.cycleLength / STEP);
-  const report = buildReport(state, today);
+  const team = teamFor(s, state.days, today);
+  const report = buildReport(state, today, team.victories);
 
   return (
     <>
@@ -77,25 +76,26 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
         )}
       </section>
 
-      <SectionTitle aside="promedio de cada semana">Tus semanas</SectionTitle>
-      <section className="card">
+      <SectionTitle aside={team.other && team.aligned ? `${team.victories} ${team.victories === 1 ? 'victoriosa' : 'victoriosas'}` : 'promedio de cada semana'}>Tus semanas</SectionTitle>
+      <section className="card" aria-label="Tus semanas">
         <div className="weeks-chart" role="img" aria-label="Porcentaje limpio de cada semana">
-          {Array.from({ length: weeks }, (_, i) => {
-            const p = weekPct(s, state.days, i + 1, today);
-            const cls = p === null ? '' : p >= 80 ? 'won' : 'active';
+          {team.list.map((w) => {
+            const p = w.own;
+            const cls = p === null ? '' : w.victory ? 'victory' : p >= VICTORY_PCT ? 'won' : 'active';
             return (
-              <div key={i} className={`col ${cls}`}>
+              <div key={w.index} className={`col ${cls}`} title={w.avg !== null ? `Con ${OTHER_NAME}: ${Math.round(w.avg)} %` : undefined}>
                 <b>{p === null ? '' : Math.round(p)}</b>
                 <div className="track">
                   <i style={{ height: `${p === null ? 0 : Math.max(3, p)}%` }} />
                 </div>
-                <span>{i + 1}</span>
+                <span>{w.index}</span>
               </div>
             );
           })}
         </div>
         <p className="muted" style={{ fontSize: 13 }}>
-          Semana de 80 % o más, en verde.
+          Dorado: semana victoriosa (tu promedio con {OTHER_NAME} llega a {VICTORY_PCT} %). Verde: tu semana sola llegó a {VICTORY_PCT} %.
+          {!team.other ? ` Abre ${OTHER_NAME} en este teléfono para sumar sus semanas.` : !team.aligned ? ` ${OTHER_NAME} tiene otro inicio de ciclo: pon la misma fecha en las dos apps.` : ''}
         </p>
       </section>
 
@@ -160,7 +160,7 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
       </section>
 
       <SectionTitle>Reporte de la semana</SectionTitle>
-      <ReportCard state={state} today={today} report={report} />
+      <ReportCard state={state} today={today} report={report} victories={team.victories} />
 
       <SectionTitle aside="toca un cuadro para corregir">Historial</SectionTitle>
       <section className="card">

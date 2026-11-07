@@ -27,7 +27,7 @@ export function weekIndexOf(start: ISODate, date: ISODate): number {
   return Math.max(1, Math.floor((dayNumber(start, date) - 1) / STEP) + 1);
 }
 
-export async function renderReportImage(state: AppState, today: ISODate): Promise<Blob> {
+export async function renderReportImage(state: AppState, today: ISODate, victories = 0): Promise<Blob> {
   await document.fonts?.ready;
   const s = state.settings;
   const ref = cyclePhase(s, today) === 'before' ? s.startDate : lastPlayableDay(s, today);
@@ -41,7 +41,7 @@ export async function renderReportImage(state: AppState, today: ISODate): Promis
   const sv = savings(s, state.days, today);
   const series = dailySeries(s, state.days, today);
   const prize = nextPrize(withClaims(steps(s, st.best), state));
-  const grand = grandStatus(s, state, today);
+  const grand = grandStatus(s, state, today, victories);
 
   const bgTop = '#14201c';
   const bgBottom = '#070b0a';
@@ -217,8 +217,8 @@ export async function renderReportImage(state: AppState, today: ISODate): Promis
   ctx.fillStyle = text;
   ctx.font = `700 30px ${font}`;
   const foot =
-    s.grand && grand.kind === 'locked'
-      ? `Gran premio: ${s.grand.name} · faltan ${grand.daysLeft} días`
+    s.grand && grand.kind === 'locked' && grand.daysLeft > 0
+      ? `Gran premio: ${s.grand.name} · ${grand.required ? `${grand.victories}/${grand.required} semanas victoriosas` : `faltan ${grand.daysLeft} días`}`
       : prize
         ? `Próximo premio: día ${prize.day} · Bs ${prize.prize.price}`
         : 'Un día limpio a la vez.';

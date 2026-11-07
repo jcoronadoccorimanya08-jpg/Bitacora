@@ -4,6 +4,7 @@ import { type ISODate } from '../lib/dates';
 import { streakStats } from '../lib/engine';
 import { haptic } from '../lib/feedback';
 import { grandStatus, nextPrize, steps, wallet, withClaims } from '../lib/rewards';
+import { teamFor } from '../lib/team';
 import type { AppState } from '../lib/types';
 import { Icon } from './Icon';
 
@@ -23,7 +24,7 @@ export function UrgeOverlay({ state, today, onClose, onDone }: { state: AppState
   const [pick, setPick] = useState(withPhrase[0]?.id ?? '');
   const st = streakStats(s, state.days, today);
   const w = wallet(s, state, today);
-  const g = grandStatus(s, state, today);
+  const g = grandStatus(s, state, today, teamFor(s, state.days, today).victories);
   const prize = nextPrize(withClaims(steps(s, st.best), state));
 
   useEffect(() => {
@@ -65,7 +66,11 @@ export function UrgeOverlay({ state, today, onClose, onDone }: { state: AppState
             <span className="goal-eyebrow">Estás construyendo esto</span>
             <b>{s.grand.name}</b>
             <span>
-              {g.kind === 'locked' ? `Faltan ${g.daysLeft} ${g.daysLeft === 1 ? 'día' : 'días'}` : '¡Ya lo puedes reclamar!'}
+              {g.kind === 'available'
+                ? '¡Ya lo puedes reclamar!'
+                : g.daysLeft > 0
+                  ? `Faltan ${g.daysLeft} ${g.daysLeft === 1 ? 'día' : 'días'}${g.required ? ` · ${g.victories} de ${g.required} semanas victoriosas` : ''}`
+                  : `${g.victories} de ${g.required} semanas victoriosas`}
               {s.grand.price ? ` · Bs ${s.grand.price}` : ''}
             </span>
           </div>

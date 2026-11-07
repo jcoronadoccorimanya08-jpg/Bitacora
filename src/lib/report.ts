@@ -32,7 +32,8 @@ export function formatHours(h: number): string {
 }
 
 /** Resumen en texto para pegarlo en Claude. Contiene datos sensibles: se comparte solo si el usuario quiere. */
-export function buildReport(state: AppState, today: ISODate): string {
+/** `victories`: semanas victoriosas con Val Q (las calcula la pantalla con lo que hay en el teléfono). */
+export function buildReport(state: AppState, today: ISODate, victories = 0): string {
   const s = state.settings;
   const st = streakStats(s, state.days, today);
   const phase = cyclePhase(s, today);
@@ -67,10 +68,11 @@ export function buildReport(state: AppState, today: ISODate): string {
   }
 
   if (prize) lines.push(`Próximo premio (día ${prize.day}): ${prize.prize.name} · Bs ${prize.prize.price}`);
-  const g = grandStatus(s, state, today);
+  const g = grandStatus(s, state, today, victories);
   if (s.grand && g.kind !== 'none') {
-    const status = g.kind === 'claimed' ? 'reclamado' : g.kind === 'available' ? 'disponible' : `faltan ${g.daysLeft} días`;
-    lines.push(`Gran premio: ${s.grand.name}${s.grand.price ? ` (Bs ${s.grand.price})` : ''} · ${status}`);
+    const status = g.kind === 'claimed' ? 'reclamado' : g.kind === 'available' ? 'disponible' : g.daysLeft > 0 ? `faltan ${g.daysLeft} días` : 'bloqueado';
+    const weeks = g.kind === 'available' || g.kind === 'locked' ? (g.required ? ` · ${g.victories} de ${g.required} semanas victoriosas` : '') : '';
+    lines.push(`Gran premio: ${s.grand.name}${s.grand.price ? ` (Bs ${s.grand.price})` : ''} · ${status}${weeks}`);
   }
   if (phase === 'finished') lines.push(`Ciclo terminado el ${cycleEnd(s)}.`);
   return lines.join('\n');

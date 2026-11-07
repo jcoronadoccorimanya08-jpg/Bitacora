@@ -20,6 +20,7 @@ Funciona sin internet, se instala en el celular y guarda todo **cifrado** en el 
 - **Escalones:** cada 7 días de racha (7, 14, 21… hasta el 84). Los días con premio tienen nombre y **precio**, y se pagan con tu ahorro; los demás son **cofres sorpresa** (+20 o +50 Bs, un comodín o una noche de series). El día 84 trae un cofre doble.
 - **Comodín:** sale de los cofres y salva un día malo para la racha.
 - **Gran premio:** tu meta, siempre arriba en Hoy. Se reclama al final del ciclo (o en la fecha que elijas).
+- **Semana victoriosa con Val Q:** si el promedio de las dos apps en la semana llega a 80 %, la semana es victoriosa. El gran premio puede pedir semanas victoriosas (`"weeks": 9` en la configuración). Las dos apps se pasan solo esos porcentajes, nunca tus hábitos.
 - **Botón de urgencia:** cuando llega el antojo, muestra tu gran premio, tu frase y tu ahorro, y te acompaña 10 minutos respirando.
 - **Análisis:** tu montaña (promedio de 7 días), semanas, lo que ganaste por hábito, historial, disparadores y caídas por día.
 - **Reporte:** una **imagen** para compartir (no muestra tus hábitos ni tus disparadores) y un texto para pedirle a Claude un análisis sin juicios.
@@ -51,7 +52,7 @@ Para no escribir todo a mano, la primera pantalla acepta un archivo `.txt` (o su
   ],
   "triggers": ["Estrés", "Cansancio"],
   "milestones": [{ "day": 7, "name": "Mi premio", "price": 100 }],
-  "grand": { "name": "Mi gran premio", "price": 500 },
+  "grand": { "name": "Mi gran premio", "price": 500, "weeks": 9 },
   "partyBonus": 0
 }
 ```

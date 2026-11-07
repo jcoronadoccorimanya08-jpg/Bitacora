@@ -2640,3 +2640,6 @@ dialog::backdrop {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+.bar.gold > i {
+  background: var(--gold);
+}

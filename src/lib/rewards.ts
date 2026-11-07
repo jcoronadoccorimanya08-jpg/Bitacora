@@ -74,17 +74,21 @@ export function wallet(s: Settings, state: Pick<AppState, 'days' | 'claims' | 'c
 export type GrandStatus =
   | { kind: 'none' }
   | { kind: 'claimed'; claimedAt: string }
-  | { kind: 'available'; target: ISODate }
-  | { kind: 'locked'; target: ISODate; daysLeft: number };
+  | { kind: 'available'; target: ISODate; victories: number; required: number }
+  | { kind: 'locked'; target: ISODate; daysLeft: number; victories: number; required: number };
 
-/** El gran premio se reclama desde su fecha; si no tiene, desde el último día del ciclo (día 90). */
-export function grandStatus(s: Settings, state: Pick<AppState, 'claims'>, today: ISODate): GrandStatus {
+/**
+ * El gran premio se reclama desde su fecha (si no tiene, desde el último día del ciclo) y, si pide semanas
+ * victoriosas, cuando las tienes. Pasada la fecha sin las semanas, sigue bloqueado: `daysLeft` queda en 0 o menos.
+ */
+export function grandStatus(s: Settings, state: Pick<AppState, 'claims'>, today: ISODate, victories = 0): GrandStatus {
   if (!s.grand) return { kind: 'none' };
   const c = state.claims.grand;
   if (c) return { kind: 'claimed', claimedAt: c.claimedAt };
   const target = s.grand.date ?? cycleEnd(s);
-  if (today >= target) return { kind: 'available', target };
-  return { kind: 'locked', target, daysLeft: diffDays(today, target) };
+  const required = s.grand.weeks ?? 0;
+  if (today >= target && victories >= required) return { kind: 'available', target, victories, required };
+  return { kind: 'locked', target, daysLeft: diffDays(today, target), victories, required };
 }
 
 /** Escalones con premio ganados y sin reclamar. */

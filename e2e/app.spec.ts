@@ -132,6 +132,43 @@ test('escalón de 7 días: premio con precio pagado con tu ahorro', async ({ pag
   await expect(page.getByLabel('Tu ahorro disponible').locator('.fund-amount')).toContainText('40');
 });
 
+test('semana victoriosa: el promedio con Val Q cuenta para el gran premio', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('val-quirurgico.semanas', JSON.stringify({ v: 1, start: '2026-11-07', weeks: { '2026-11-07': 70 }, at: '' }));
+  });
+  await page.clock.install({ time: SATURDAY_NIGHT });
+  await page.goto('./');
+  const config = {
+    app: 'bitacora',
+    kind: 'config',
+    habits: [{ id: 'uno', name: 'Hábito uno', q: '¿Día limpio?', ok: 'Limpio', fail: 'Caí', phrase: '' }],
+    triggers: ['Estrés'],
+    grand: { name: 'Gran premio de prueba', price: 0, weeks: 9 },
+  };
+  await page.locator('input[type=file]').setInputFiles({ name: 'config.txt', mimeType: 'text/plain', buffer: Buffer.from(JSON.stringify(config)) });
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.getByRole('button', { name: /^Hoy/ }).click();
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await createPattern(page);
+  await expect(page.getByRole('button', { name: 'Tu meta' })).toContainText('0 de 9 semanas victoriosas');
+
+  await page.clock.setFixedTime(new Date('2026-11-13T21:00:00-04:00'));
+  await page.reload();
+  await draw(page, PATTERN);
+  for (let i = 0; i < 7; i++) {
+    await page.getByRole('article', { name: 'Hábito uno' }).getByRole('button', { name: 'Limpio' }).click();
+    if (i < 6) await page.getByRole('button', { name: 'Día anterior' }).click();
+  }
+  await expect(page.getByRole('button', { name: 'Tu meta' })).toContainText('1 de 9 semanas victoriosas');
+  await nav(page, 'Premios');
+  await expect(page.getByRole('region', { name: 'Gran premio' })).toContainText('1/9 semanas');
+  await nav(page, 'Análisis');
+  await expect(page.getByLabel('Tus semanas').locator('.col.victory')).toHaveCount(1);
+  const share = await page.evaluate(() => localStorage.getItem('bitacora.semanas') ?? '');
+  expect(share).toContain('"2026-11-07":100');
+  expect(share).not.toContain('Hábito');
+});
+
 test('carga la configuración con premios, gran premio y «Dije no a una fiesta»', async ({ page }) => {
   await page.clock.install({ time: SATURDAY_NIGHT });
   await page.goto('./');

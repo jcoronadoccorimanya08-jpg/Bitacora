@@ -93,6 +93,7 @@ export function sanitizeGrand(v: unknown): GrandPrize | null {
   const g: GrandPrize = { name };
   if (typeof v.price === 'number') g.price = Math.round(num(v.price, 0, 100000, 0));
   if (isValidISODate(v.date)) g.date = v.date;
+  if (typeof v.weeks === 'number' && v.weeks >= 1) g.weeks = Math.round(num(v.weeks, 1, 52, 1));
   return g;
 }
 

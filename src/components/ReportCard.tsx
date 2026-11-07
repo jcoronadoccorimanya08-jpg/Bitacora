@@ -9,7 +9,7 @@ import type { AppState } from '../lib/types';
 import { Icon } from './Icon';
 
 /** Reporte de la semana: tarjeta visual + imagen para compartir (sin nombres de hábitos) + texto para Claude. */
-export function ReportCard({ state, today, report }: { state: AppState; today: ISODate; report: string }) {
+export function ReportCard({ state, today, report, victories = 0 }: { state: AppState; today: ISODate; report: string; victories?: number }) {
   const s = state.settings;
   const [busy, setBusy] = useState(false);
   const [showText, setShowText] = useState(false);
@@ -25,7 +25,7 @@ export function ReportCard({ state, today, report }: { state: AppState; today: I
   const shareImage = async () => {
     setBusy(true);
     try {
-      const blob = await renderReportImage(state, today);
+      const blob = await renderReportImage(state, today, victories);
       const file = new File([blob], `bitacora-semana-${wk}.png`, { type: 'image/png' });
       if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: `Bitácora · Semana ${wk}` });
