@@ -1,49 +1,69 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const MONDAY_NIGHT = new Date('2026-11-09T21:00:00-04:00');
+// Sábado 7 de noviembre de 2026, 21:00 en La Paz.
+const SATURDAY_NIGHT = new Date('2026-11-07T21:00:00-04:00');
+const PATTERN = [1, 2, 3, 6, 9];
 
-async function typePin(page: Page, pin: string, submit: string) {
-  for (const d of pin) await page.getByRole('button', { name: d, exact: true }).click();
-  await page.getByRole('button', { name: submit, exact: true }).click();
+async function draw(page: Page, dots: number[]) {
+  const centers = [];
+  for (const d of dots) {
+    const box = await page.locator(`[data-dot="${d}"]`).first().boundingBox();
+    if (!box) throw new Error(`sin punto ${d}`);
+    centers.push({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  }
+  await page.mouse.move(centers[0]!.x, centers[0]!.y);
+  await page.mouse.down();
+  for (const c of centers.slice(1)) await page.mouse.move(c.x, c.y, { steps: 6 });
+  await page.mouse.up();
 }
 
-async function setupManual(page: Page) {
-  await page.clock.install({ time: MONDAY_NIGHT });
+async function createPattern(page: Page) {
+  await expect(page.getByRole('heading', { name: 'Crea tu patrón' })).toBeVisible();
+  await draw(page, PATTERN);
+  await expect(page.getByRole('heading', { name: 'Repite tu patrón' })).toBeVisible();
+  await draw(page, PATTERN);
+}
+
+async function setupManual(page: Page, start: 'Hoy' | 'Mañana' = 'Hoy') {
+  await page.clock.install({ time: SATURDAY_NIGHT });
   await page.goto('./');
   await page.getByRole('button', { name: 'Configurar a mano' }).click();
   await page.getByRole('button', { name: '+ Procrastinación' }).click();
   await page.getByRole('button', { name: '+ Cigarro' }).click();
   await page.getByRole('button', { name: 'Siguiente' }).click();
   await expect(page.getByRole('heading', { name: '¿Cuándo empiezas?' })).toBeVisible();
+  await page.getByRole('button', { name: new RegExp(`^${start}`) }).click();
   await page.getByRole('button', { name: 'Siguiente' }).click();
-  await expect(page.getByRole('heading', { name: 'Crea tu PIN' })).toBeVisible();
-  await typePin(page, '1234', 'Siguiente');
-  await expect(page.getByRole('heading', { name: 'Repite tu PIN' })).toBeVisible();
-  await typePin(page, '1234', 'Crear');
-  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
+  await createPattern(page);
+  await expect(page.getByRole('heading', { name: start === 'Hoy' ? 'Día 1 de 90' : 'Tu ciclo está por empezar' })).toBeVisible();
 }
 
-test('configura, marca un día limpio y lo protege con PIN', async ({ page }) => {
+async function markClean(page: Page) {
+  await page.getByRole('article', { name: 'Procrastinación' }).getByRole('button', { name: 'Cumplí' }).click();
+  await page.getByRole('article', { name: 'Cigarro' }).getByRole('button', { name: 'Limpio' }).click();
+}
+
+const nav = (page: Page, name: string) => page.locator('nav.nav').getByRole('button', { name }).click();
+
+test('configura con patrón, marca un día limpio, suma el ahorro y lo protege', async ({ page }) => {
   await setupManual(page);
-
-  const proc = page.getByRole('article', { name: 'Procrastinación' });
-  const cig = page.getByRole('article', { name: 'Cigarro' });
-  await proc.getByRole('button', { name: 'Cumplí' }).click();
-  await cig.getByRole('button', { name: 'Limpio' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Día limpio.' })).toBeVisible();
+  await markClean(page);
+  await expect(page.getByRole('status').filter({ hasText: '¡Día limpio!' })).toBeVisible();
   await expect(page.getByLabel('Racha').locator('.big')).toHaveText('1');
+  await expect(page.getByLabel('Tu ahorro')).toContainText('Bs 10');
 
-  // Al recargar pide el PIN; uno incorrecto no abre
+  // Al recargar pide el patrón; uno incorrecto no abre
   await page.reload();
-  await expect(page.getByText('Ingresa tu PIN')).toBeVisible();
-  await typePin(page, '0000', 'Entrar');
-  await expect(page.getByRole('alert')).toHaveText('PIN incorrecto.');
-  await typePin(page, '1234', 'Entrar');
+  await expect(page.getByText('Dibuja tu patrón')).toBeVisible();
+  await draw(page, [1, 4, 7, 8]);
+  await expect(page.getByRole('alert')).toHaveText('Patrón incorrecto.');
+  await draw(page, PATTERN);
   await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
-  await expect(proc.getByRole('button', { name: 'Cumplí' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('article', { name: 'Cigarro' }).getByRole('button', { name: 'Limpio' })).toHaveAttribute('aria-pressed', 'true');
 
-  // Los datos guardados están cifrados: el texto no aparece en el almacenamiento
-  const raw = await page.evaluate(() => localStorage.getItem('bitacora.vault') ?? '');
+  // Todo queda cifrado: los nombres no aparecen en el almacenamiento
+  const raw = await page.evaluate(() => localStorage.getItem('bitacora.vault2') ?? '');
+  expect(raw.length).toBeGreaterThan(100);
   expect(raw).not.toContain('Procrastinación');
   expect(raw).not.toContain('Cigarro');
 });
@@ -57,31 +77,176 @@ test('una caída muestra los disparadores y avisa sin juzgar', async ({ page }) 
   await expect(cig.getByRole('button', { name: 'Estrés' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText('Hoy hubo una caída. Mañana no se negocia')).toBeVisible();
 
-  await page.locator('nav.nav').getByRole('button', { name: 'Análisis' }).click();
+  await nav(page, 'Análisis');
   await expect(page.getByText('Lo que más te disparó: Estrés (1).')).toBeVisible();
+  await expect(page.getByRole('img', { name: /Tu porcentaje diario/ })).toBeVisible();
 });
 
-test('carga una configuración desde archivo', async ({ page }) => {
-  await page.clock.install({ time: MONDAY_NIGHT });
+test('botón de urgencia: muestra tu meta, respira 10 minutos y cuenta el antojo', async ({ page }) => {
+  await setupManual(page);
+  await page.getByRole('button', { name: 'Tengo un antojo' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Botón de urgencia' });
+  await expect(dlg).toContainText('10:00');
+  await expect(dlg).toContainText('«Dos minutos. Solo empiezo.»');
+  await dlg.getByRole('button', { name: 'Cigarro' }).click();
+  await expect(dlg).toContainText('«No fumo.»');
+  await page.clock.runFor(10 * 60_000);
+  await expect(dlg).toContainText('¡Pasó!');
+  await dlg.getByRole('button', { name: 'Lo superé' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Lo superaste' })).toBeVisible();
+  await nav(page, 'Premios');
+  await expect(page.getByText('1 antojo superado con el botón de urgencia')).toBeVisible();
+});
+
+test('escalón de 7 días: premio con precio pagado con tu ahorro', async ({ page }) => {
+  await setupManual(page);
+  await nav(page, 'Premios');
+  await expect(page.getByLabel('Escalón del día 35')).toContainText('cofre sorpresa');
+  await expect(page.getByLabel('Escalón del día 84')).toContainText('cofre doble');
+  const day7 = page.getByLabel('Premio del día 7');
+  await day7.getByRole('button', { name: 'Cambiar premio o precio' }).click();
+  await page.getByLabel('Premio', { exact: true }).fill('Premio de prueba');
+  await page.getByLabel('Precio en Bs').fill('30');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect(day7).toContainText('Premio de prueba');
+  await expect(day7).toContainText('Bs 30');
+
+  // Siete días limpios: del sábado 7 al viernes 13
+  await page.clock.setFixedTime(new Date('2026-11-13T21:00:00-04:00'));
+  await page.reload();
+  await draw(page, PATTERN);
+  await expect(page.getByRole('heading', { name: 'Día 7 de 90' })).toBeVisible();
+  for (let i = 0; i < 6; i++) {
+    await markClean(page);
+    await page.getByRole('button', { name: 'Día anterior' }).click();
+  }
+  await markClean(page);
+  await expect(page.getByRole('status').filter({ hasText: '¡Escalón de 7 días!' })).toBeVisible();
+
+  await nav(page, 'Premios');
+  await expect(page.getByLabel('Tu ahorro disponible')).toContainText('70');
+  await day7.getByRole('button', { name: 'Reclamar' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Reclamar' }).click();
+  await expect(page.getByRole('status').filter({ hasText: '¡Premio de prueba! Te lo ganaste.' })).toBeVisible();
+  await expect(day7).toContainText('Reclamado');
+  await expect(page.getByLabel('Tu ahorro disponible').locator('.fund-amount')).toContainText('40');
+});
+
+test('carga la configuración con premios, gran premio y «Dije no a una fiesta»', async ({ page }) => {
+  await page.clock.install({ time: SATURDAY_NIGHT });
   await page.goto('./');
   const config = {
     app: 'bitacora',
     kind: 'config',
     habits: [
-      { id: 'uno', name: 'Hábito uno', q: '¿Día limpio?', ok: 'Limpio', f: 'Caí', fr: 'Frase uno' },
-      { id: 'dos', name: 'Hábito dos', q: '¿Cumplí?', ok: 'Sí', f: 'No', fr: '' },
+      { id: 'uno', name: 'Hábito uno', q: '¿Día limpio?', ok: 'Limpio', fail: 'Caí', phrase: 'Frase uno', value: { kind: 'bs', amount: 15 } },
+      { id: 'dos', name: 'Hábito dos', q: '¿Cumplí?', ok: 'Sí', fail: 'No', phrase: '', value: { kind: 'dias', amount: 1, label: 'Mente clara' } },
     ],
     triggers: ['Estrés', 'Cansancio'],
+    milestones: [{ day: 7, name: 'Premio siete', price: 100 }],
+    grand: { name: 'Gran premio de prueba', price: 500 },
+    partyBonus: 200,
   };
-  await page.locator('input[type=file]').setInputFiles({ name: 'config.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(config)) });
+  await page.locator('input[type=file]').setInputFiles({ name: 'config.txt', mimeType: 'text/plain', buffer: Buffer.from(JSON.stringify(config)) });
   await expect(page.getByText('1. Hábito uno')).toBeVisible();
-  await expect(page.getByText('2. Hábito dos')).toBeVisible();
+  await expect(page.getByText('gran premio: Gran premio de prueba')).toBeVisible();
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.getByRole('button', { name: /^Hoy/ }).click();
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await createPattern(page);
+
+  const goal = page.getByRole('button', { name: 'Tu meta' });
+  await expect(goal).toContainText('Gran premio de prueba');
+  await expect(goal).toContainText('89');
+  await page.getByRole('button', { name: 'Dije no a una fiesta (+Bs 200)' }).click();
+  await expect(page.getByRole('status').filter({ hasText: '+Bs 200' })).toBeVisible();
+  await page.getByRole('article', { name: 'Hábito dos' }).getByRole('button', { name: 'Sí' }).click();
+  await expect(page.getByLabel('Tu ahorro')).toContainText('Bs 200');
+  await expect(page.getByLabel('Tu ahorro')).toContainText('día de mente clara');
+});
+
+test('se puede pegar la configuración como texto', async ({ page }) => {
+  await page.clock.install({ time: SATURDAY_NIGHT });
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Pegar mi configuración o un respaldo' }).click();
+  const config = { app: 'bitacora', kind: 'config', habits: [{ name: 'Hábito pegado' }], triggers: ['Estrés'] };
+  await page.getByLabel('Configuración o respaldo en texto').fill(JSON.stringify(config, null, 2));
+  await page.getByRole('button', { name: 'Usar este texto' }).click();
+  await expect(page.getByText('1. Hábito pegado')).toBeVisible();
+});
+
+test('respaldo: se copia como texto y se restaura con su patrón', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await setupManual(page);
+  await markClean(page);
+  await nav(page, 'Ajustes');
+  await page.getByRole('button', { name: 'Copiar respaldo' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Respaldo copiado' })).toBeVisible();
+  const text = await page.evaluate(() => navigator.clipboard.readText());
+  expect(text).toContain('"app":"bitacora"');
+  expect(text).not.toContain('Cigarro');
+
+  await page.getByRole('button', { name: 'Pegar un respaldo o una configuración' }).click();
+  await page.getByLabel('Texto del respaldo o de la configuración').fill(text);
+  await page.getByRole('button', { name: 'Usar este texto' }).click();
+  await expect(page.getByRole('heading', { name: 'Patrón del respaldo' })).toBeVisible();
+  await draw(page, PATTERN);
+  await page.getByRole('button', { name: 'Restaurar', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Respaldo restaurado' })).toBeVisible();
+});
+
+test('huella: se activa y abre la app', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  try {
+    await cdp.send('WebAuthn.addVirtualAuthenticator', {
+      options: {
+        protocol: 'ctap2',
+        ctap2Version: 'ctap2_1',
+        transport: 'internal',
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        hasPrf: true,
+        automaticPresenceSimulation: true,
+      },
+    });
+  } catch {
+    test.skip(true, 'Este Chromium no simula huella con PRF');
+  }
+  await setupManual(page);
+  await nav(page, 'Ajustes');
+  await page.getByRole('button', { name: 'Activar' }).first().click();
+  await expect(page.getByRole('status').filter({ hasText: 'Huella activada.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Bloquear', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
+});
+
+test('si el ciclo empieza mañana, se puede empezar hoy', async ({ page }) => {
+  await setupManual(page, 'Mañana');
+  await expect(page.getByText('Empieza el domingo 8 de noviembre')).toBeVisible();
+  await page.getByRole('button', { name: 'Prefiero empezar hoy' }).click();
+  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
 });
 
 test('el candado bloquea la app al instante', async ({ page }) => {
   await setupManual(page);
   await page.getByRole('button', { name: 'Bloquear ahora' }).click();
-  await expect(page.getByText('Ingresa tu PIN')).toBeVisible();
+  await expect(page.getByText('Dibuja tu patrón')).toBeVisible();
+});
+
+test('borra la bóveda de prueba de la versión con PIN y empieza de cero', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('seeded')) {
+      localStorage.setItem('bitacora.vault', '{"v":1,"prueba":true}');
+      sessionStorage.setItem('seeded', '1');
+    }
+  });
+  await page.goto('./');
+  await expect(page.getByRole('button', { name: 'Configurar a mano' })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('bitacora.vault'))).toBeNull();
 });
 
 test('la bienvenida funciona sin internet y explica cómo instalar', async ({ page }) => {
@@ -90,35 +255,6 @@ test('la bienvenida funciona sin internet y explica cómo instalar', async ({ pa
   await expect
     .poll(() => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length), { timeout: 15_000 })
     .toBeGreaterThan(0);
-});
-
-test('se puede pegar la configuración como texto', async ({ page }) => {
-  await page.clock.install({ time: MONDAY_NIGHT });
-  await page.goto('./');
-  await page.getByRole('button', { name: 'Pegar mi configuración' }).click();
-  const config = {
-    app: 'bitacora',
-    kind: 'config',
-    habits: [{ name: 'Hábito pegado', q: '¿Día limpio?', ok: 'Limpio', fail: 'Caí', phrase: '' }],
-    triggers: ['Estrés'],
-  };
-  await page.getByLabel('Configuración en texto').fill(JSON.stringify(config, null, 2));
-  await page.getByRole('button', { name: 'Usar esta configuración' }).click();
-  await expect(page.getByText('1. Hábito pegado')).toBeVisible();
-});
-
-test('si el ciclo empieza el lunes, se puede empezar hoy', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-11-06T20:00:00-04:00') }); // viernes
-  await page.goto('./');
-  await page.getByRole('button', { name: 'Configurar a mano' }).click();
-  await page.getByRole('button', { name: '+ Cigarro' }).click();
-  await page.getByRole('button', { name: 'Siguiente' }).click();
-  await page.getByRole('button', { name: 'Siguiente' }).click(); // por defecto: el lunes
-  await typePin(page, '1234', 'Siguiente');
-  await typePin(page, '1234', 'Crear');
-  await expect(page.getByRole('heading', { name: 'Tu ciclo está por empezar' })).toBeVisible();
-  await page.getByRole('button', { name: 'Prefiero empezar hoy' }).click();
-  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
 });
 
 test('si la app ya está instalada, lo dice en vez de pedir instalarla', async ({ page }) => {

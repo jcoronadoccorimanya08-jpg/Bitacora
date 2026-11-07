@@ -10,3 +10,6 @@ playwright-report/
 *config*.privado.json
 bitacora-*.json
 *.respaldo.json
+*configuracion*.txt
+bitacora-*.txt
+*.respaldo.txt

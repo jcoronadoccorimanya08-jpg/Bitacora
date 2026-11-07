@@ -1,72 +1,82 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../components/Icon';
-import { PinPad } from '../components/PinPad';
+import { PatternPad } from '../components/PatternPad';
 import { checkForUpdate } from '../components/UpdateBanner';
 import { ConfirmDialog, ScreenHeader, SectionTitle } from '../components/ui';
-import { canShareFiles, downloadText, openBackup, parseFile, serializeBackup, shareText } from '../lib/backup';
+import { canShareFiles, downloadBackupText, parseFile, serializeBackup, shareBackupText, type ConfigData } from '../lib/backup';
 import { AUTOLOCK_OPTIONS, MAX_HABITS, MAX_TRIGGERS } from '../lib/config';
-import type { Sealed } from '../lib/crypto';
-import { diffDays, formatLong, formatShort, isValidISODate, localDateOf, nextMonday, plural, weekday, type ISODate } from '../lib/dates';
+import { diffDays, formatLong, formatShort, isValidISODate, localDateOf, plural, type ISODate } from '../lib/dates';
+import { cycleEnd } from '../lib/engine';
 import { toast } from '../lib/feedback';
 import { useInstallPrompt } from '../lib/hooks';
-import { buildReport } from '../lib/report';
-import { actions, changePin, currentSealed, lock, replaceState, verifyPin, wipeAll } from '../lib/store';
-import type { AppState, Habit, Theme } from '../lib/types';
+import {
+  actions,
+  biometricSupport,
+  changePattern,
+  currentBackup,
+  disableBiometric,
+  enableBiometric,
+  lock,
+  openBackup,
+  replaceState,
+  verifyPattern,
+} from '../lib/store';
+import type { AppState, GrandPrize, Habit, HabitValue, Theme } from '../lib/types';
+import type { VaultRecord } from '../lib/vault';
 
 type Pending =
   | { kind: 'start'; date: ISODate }
   | { kind: 'restart'; date: ISODate }
   | { kind: 'restore'; state: AppState }
-  | { kind: 'config'; habits: Habit[]; triggers: string[] }
-  | { kind: 'removeHabit'; habit: Habit }
-  | { kind: 'reset' }
+  | ({ kind: 'config' } & ConfigData)
   | null;
 
-type Overlay = { kind: 'pin' } | { kind: 'backupPin'; sealed: Sealed } | null;
+type Overlay = { kind: 'pattern' } | { kind: 'backup'; record: Pick<VaultRecord, 'lock' | 'data'> } | null;
 
-export function SettingsScreen({ state, today }: { state: AppState; today: ISODate }) {
+export function SettingsScreen({ state, today, hasBio }: { state: AppState; today: ISODate; hasBio: boolean }) {
   const s = state.settings;
   const [pending, setPending] = useState<Pending>(null);
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const [paste, setPaste] = useState<string | null>(null);
   const [newTrigger, setNewTrigger] = useState('');
   const [newHabit, setNewHabit] = useState('');
+  const [bioSupport, setBioSupport] = useState<'yes' | 'maybe' | 'no' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { installed, canInstall, install } = useInstallPrompt();
   const shareFiles = canShareFiles();
-  const restartDate = weekday(today) === 1 ? today : nextMonday(today);
-  const report = buildReport(state, today);
 
-  const backup = async (mode: 'share' | 'download') => {
+  useEffect(() => {
+    void biometricSupport().then(setBioSupport);
+  }, []);
+
+  const doBackup = async (mode: 'share' | 'download' | 'copy') => {
     try {
-      const sealed = await currentSealed();
-      if (!sealed) return;
-      const json = serializeBackup(sealed);
+      const rec = await currentBackup();
+      if (!rec) return;
+      const text = serializeBackup(rec);
       if (mode === 'share') {
-        if ((await shareText(json)) === 'cancelled') return;
-      } else downloadText(json);
+        if ((await shareBackupText(text)) === 'cancelled') return;
+      } else if (mode === 'download') downloadBackupText(text);
+      else await navigator.clipboard.writeText(text);
       actions.markBackup();
-      toast('Respaldo cifrado listo.', 'success');
+      toast(mode === 'copy' ? 'Respaldo copiado. Pégalo en una nota privada o en Drive.' : 'Respaldo listo.', 'success');
     } catch {
-      toast('No se pudo crear el respaldo.', 'error');
+      toast('No se pudo crear el respaldo. Prueba con «Copiar».', 'error');
     }
   };
 
-  const onFile = async (file: File) => {
+  const readText = (text: string) => {
     try {
-      const parsed = parseFile(await file.text());
-      if (parsed.kind === 'config') setPending({ kind: 'config', habits: parsed.habits, triggers: parsed.triggers });
-      else setOverlay({ kind: 'backupPin', sealed: parsed.sealed });
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Archivo inválido.', 'error');
-    }
-  };
-
-  const copyReport = async () => {
-    try {
-      await navigator.clipboard.writeText(report);
-      toast('Reporte copiado.', 'success');
-    } catch {
-      toast('No se pudo copiar. Usa "Compartir".', 'error');
+      const parsed = parseFile(text);
+      if (parsed.kind === 'backup') setOverlay({ kind: 'backup', record: parsed.record });
+      else {
+        const { kind: _k, ...config } = parsed;
+        void _k;
+        setPending({ kind: 'config', ...config });
+      }
+      setPaste(null);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Archivo inválido.', 'error');
     }
   };
 
@@ -81,31 +91,77 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
     <>
       <ScreenHeader eyebrow="Ajustes" title="Tu bitácora" subtitle="Cifrada y guardada solo en este teléfono." />
 
+      <SectionTitle>Seguridad</SectionTitle>
+      <div className="group">
+        <Item
+          title="Entrar con huella"
+          note={
+            hasBio
+              ? 'Activada. El patrón sigue sirviendo si la huella falla.'
+              : bioSupport === 'no'
+                ? 'Tu teléfono o tu Chrome no lo permiten. Sigue con tu patrón.'
+                : 'Más rápido que el patrón. Tus datos siguen cifrados.'
+          }
+        >
+          {hasBio ? (
+            <button
+              type="button"
+              className="btn sm"
+              onClick={async () => {
+                await disableBiometric();
+                toast('Huella desactivada.');
+              }}
+            >
+              Quitar
+            </button>
+          ) : bioSupport !== 'no' ? (
+            <button
+              type="button"
+              className="btn primary sm"
+              onClick={async () => {
+                try {
+                  await enableBiometric();
+                  toast('Huella activada.', 'success');
+                } catch (e) {
+                  const m = e instanceof Error ? e.message : '';
+                  toast(m === 'NOPRF' ? 'Tu teléfono no permite usar la huella aquí.' : 'No se activó la huella.', 'error');
+                  if (m === 'NOPRF') setBioSupport('no');
+                }
+              }}
+            >
+              <Icon name="fingerprint" size={17} /> Activar
+            </button>
+          ) : null}
+        </Item>
+        <Item title="Cambiar patrón">
+          <button type="button" className="btn sm" onClick={() => setOverlay({ kind: 'pattern' })}>
+            Cambiar
+          </button>
+        </Item>
+        <div className="item col">
+          <div className="txt">
+            <b>Pedir el patrón</b>
+            <span>Cuando sales de la app y vuelves.</span>
+          </div>
+          <div className="segmented" role="group" aria-label="Bloqueo automático" style={{ marginTop: 10 }}>
+            {AUTOLOCK_OPTIONS.map((m) => (
+              <button key={m} type="button" aria-pressed={s.autoLockMinutes === m} onClick={() => actions.setAutoLock(m)}>
+                {m === 0 ? 'Al salir' : `${m} min`}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Item title="Bloquear ahora">
+          <button type="button" className="btn sm" onClick={lock}>
+            <Icon name="lock" size={16} /> Bloquear
+          </button>
+        </Item>
+      </div>
+
       <SectionTitle aside={`${s.habits.length}/${MAX_HABITS}`}>Hábitos</SectionTitle>
       <div className="group">
         {s.habits.map((h, i) => (
-          <div key={h.id} className="habit-edit">
-            <details className="habit-details">
-              <summary>
-                <Icon name="pencil" size={16} /> {i + 1}. {h.name}
-              </summary>
-              <Field label="Nombre" value={h.name} max={60} onCommit={(v) => v && actions.updateHabit(h.id, { name: v })} />
-              <Field label="Pregunta del día" value={h.q} max={120} onCommit={(v) => v && actions.updateHabit(h.id, { q: v })} />
-              <div className="row2">
-                <Field label="Botón de cumplir" value={h.ok} max={24} onCommit={(v) => v && actions.updateHabit(h.id, { ok: v })} />
-                <Field label="Botón de caída" value={h.fail} max={24} onCommit={(v) => v && actions.updateHabit(h.id, { fail: v })} />
-              </div>
-              <Field label="Tu frase" value={h.phrase} max={160} placeholder="Una frase para el momento difícil" onCommit={(v) => actions.updateHabit(h.id, { phrase: v })} />
-              <div className="habit-actions">
-                <button type="button" className="btn sm" disabled={i === 0} onClick={() => actions.moveHabit(h.id, -1)}>
-                  <Icon name="chevronUp" size={16} /> Subir
-                </button>
-                <button type="button" className="btn sm danger" disabled={s.habits.length <= 1} onClick={() => setPending({ kind: 'removeHabit', habit: h })}>
-                  <Icon name="trash" size={16} /> Quitar
-                </button>
-              </div>
-            </details>
-          </div>
+          <HabitEditor key={h.id} habit={h} index={i} />
         ))}
         {s.habits.length < MAX_HABITS && (
           <AddRow
@@ -115,6 +171,7 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
             onAdd={() => {
               actions.addHabit(newHabit);
               setNewHabit('');
+              toast('Hábito agregado.');
             }}
           />
         )}
@@ -127,12 +184,15 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
             {s.triggers.map((t) => (
               <span key={t} className="tag-chip">
                 {t}
-                <button type="button" aria-label={`Quitar ${t}`} onClick={() => actions.removeTrigger(t)}>
+                <button type="button" aria-label={`Sacar ${t} de la lista`} onClick={() => actions.removeTrigger(t)}>
                   <Icon name="x" size={15} />
                 </button>
               </span>
             ))}
           </div>
+          <span className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>
+            Sacar uno de la lista no cambia tu historial.
+          </span>
         </div>
         {s.triggers.length < MAX_TRIGGERS && (
           <AddRow
@@ -145,6 +205,21 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
             }}
           />
         )}
+      </div>
+
+      <SectionTitle>Ahorro y gran premio</SectionTitle>
+      <div className="group">
+        <Stepper
+          title="«Dije no a una fiesta»"
+          note={s.partyBonus ? `Cada vez suma Bs ${s.partyBonus} a tu ahorro.` : 'Botón apagado. Súbelo para mostrarlo en Hoy.'}
+          value={s.partyBonus}
+          min={0}
+          max={2000}
+          step={10}
+          prefix="Bs "
+          onChange={(v) => actions.setPartyBonus(v)}
+        />
+        <GrandEditor grand={s.grand} defaultDate={cycleEnd(s)} />
       </div>
 
       <SectionTitle>Ciclo</SectionTitle>
@@ -161,36 +236,9 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
             }}
           />
         </Item>
-        <Item title="Empezar un ciclo nuevo" note="Reinicia la racha y los premios. Tus hábitos se conservan.">
-          <button type="button" className="btn sm" onClick={() => setPending({ kind: 'restart', date: restartDate })}>
+        <Item title="Empezar un ciclo nuevo" note="Reinicia la racha, los premios y los cofres. Tus hábitos y tu historial se conservan.">
+          <button type="button" className="btn sm" onClick={() => setPending({ kind: 'restart', date: today })}>
             Nuevo
-          </button>
-        </Item>
-      </div>
-
-      <SectionTitle>Privacidad</SectionTitle>
-      <div className="group">
-        <div className="item col">
-          <div className="txt">
-            <b>Pedir el PIN</b>
-            <span>Cuando sales de la app y vuelves.</span>
-          </div>
-          <div className="segmented" role="group" aria-label="Bloqueo automático" style={{ marginTop: 10 }}>
-            {AUTOLOCK_OPTIONS.map((m) => (
-              <button key={m} type="button" aria-pressed={s.autoLockMinutes === m} onClick={() => actions.setAutoLock(m)}>
-                {m === 0 ? 'Al salir' : `${m} min`}
-              </button>
-            ))}
-          </div>
-        </div>
-        <Item title="Cambiar PIN">
-          <button type="button" className="btn sm" onClick={() => setOverlay({ kind: 'pin' })}>
-            <Icon name="lock" size={16} /> Cambiar
-          </button>
-        </Item>
-        <Item title="Bloquear ahora">
-          <button type="button" className="btn sm" onClick={lock}>
-            Bloquear
           </button>
         </Item>
       </div>
@@ -214,70 +262,56 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
         </div>
       </div>
 
-      <SectionTitle>Reporte para Claude</SectionTitle>
-      <div className="group">
-        <div className="item col">
-          <div className="txt">
-            <b>Tu semana en texto</b>
-            <span>Pégalo en Claude para recibir un análisis sin juicios.</span>
-          </div>
-          <div className="warn-note">
-            <Icon name="alert" size={16} />
-            Incluye tus hábitos y caídas. Compártelo solo donde tú quieras.
-          </div>
-          <div className="btn-row">
-            <button type="button" className="btn primary" onClick={() => void copyReport()}>
-              <Icon name="copy" size={18} /> Copiar
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={async () => {
-                try {
-                  await navigator.share({ text: report });
-                } catch (err) {
-                  if (!(err instanceof DOMException && err.name === 'AbortError')) void copyReport();
-                }
-              }}
-            >
-              <Icon name="share" size={18} /> Compartir
-            </button>
-          </div>
-          <details>
-            <summary>Ver el reporte</summary>
-            <pre className="report-preview">{report}</pre>
-          </details>
-        </div>
-      </div>
-
       <SectionTitle>Respaldo</SectionTitle>
       <div className="group">
         <div className="item col">
           <div className="txt">
             <b>Copia de seguridad cifrada</b>
-            <span>{lastBackupText} Solo se abre con tu PIN. Guárdala en Drive para no perder tu historial si cambias de teléfono.</span>
+            <span>{lastBackupText} Se abre solo con tu patrón. Guárdala en Drive por si cambias de teléfono.</span>
           </div>
           <div className="stack" style={{ marginTop: 10 }}>
             {shareFiles && (
-              <button type="button" className="btn primary block" onClick={() => void backup('share')}>
+              <button type="button" className="btn primary block" onClick={() => void doBackup('share')}>
                 <Icon name="share" size={18} /> Guardar en Drive o compartir
               </button>
             )}
-            <button type="button" className={`btn block ${shareFiles ? '' : 'primary'}`} onClick={() => void backup('download')}>
-              <Icon name="download" size={18} /> Descargar archivo
+            <button type="button" className={`btn block ${shareFiles ? '' : 'primary'}`} onClick={() => void doBackup('download')}>
+              <Icon name="download" size={18} /> Guardar en el celular
             </button>
-            <button type="button" className="btn block" onClick={() => fileRef.current?.click()}>
+            <button type="button" className="btn block" onClick={() => void doBackup('copy')}>
+              <Icon name="copy" size={18} /> Copiar respaldo
+            </button>
+            <button type="button" className="btn ghost block" onClick={() => fileRef.current?.click()}>
               <Icon name="upload" size={18} /> Restaurar o cargar configuración
             </button>
+            <button type="button" className="btn ghost block" onClick={() => setPaste(paste === null ? '' : null)}>
+              Pegar un respaldo o una configuración
+            </button>
+            {paste !== null && (
+              <div className="paste-box">
+                <textarea
+                  value={paste}
+                  onChange={(e) => setPaste(e.target.value)}
+                  placeholder="Pega aquí el texto"
+                  aria-label="Texto del respaldo o de la configuración"
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                />
+                <button type="button" className="btn primary block" disabled={!paste.trim()} onClick={() => readText(paste)}>
+                  Usar este texto
+                </button>
+              </div>
+            )}
           </div>
           <input
             ref={fileRef}
             type="file"
-            accept="application/json,.json"
+            accept="text/plain,.txt,application/json,.json"
             hidden
-            onChange={(e) => {
+            onChange={async (e) => {
               const f = e.target.files?.[0];
-              if (f) void onFile(f);
+              if (f) readText(await f.text());
               e.target.value = '';
             }}
           />
@@ -288,7 +322,7 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
       <div className="group">
         <Item
           title={installed ? 'Instalada en tu teléfono' : 'Instalar en tu teléfono'}
-          note={installed ? 'Ábrela desde su ícono.' : canInstall ? 'Queda con su ícono y funciona sin internet.' : 'En Chrome: menú ⋮ → «Instalar aplicación».'}
+          note={installed ? 'Ábrela desde su ícono. Funciona sin internet.' : canInstall ? 'Queda con su ícono y funciona sin internet.' : 'En Chrome: menú ⋮ → «Instalar aplicación».'}
         >
           {canInstall ? (
             <button type="button" className="btn primary sm" onClick={() => void install()}>
@@ -310,15 +344,6 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
         </Item>
       </div>
 
-      <SectionTitle>Zona de cuidado</SectionTitle>
-      <div className="group">
-        <Item title="Borrar todo" note="Elimina tu bitácora de este teléfono. No se puede deshacer.">
-          <button type="button" className="btn danger sm" onClick={() => setPending({ kind: 'reset' })}>
-            Borrar
-          </button>
-        </Item>
-      </div>
-
       <p className="fine">Bitácora · sin cuentas, sin servidores. Tus datos no salen de este teléfono.</p>
 
       <ConfirmDialog
@@ -327,25 +352,28 @@ export function SettingsScreen({ state, today }: { state: AppState; today: ISODa
         {...confirmContent(pending)}
         onConfirm={() => {
           if (!pending) return;
-          if (pending.kind === 'start') actions.setStartDate(pending.date);
-          else if (pending.kind === 'restart') {
+          if (pending.kind === 'start') {
+            actions.setStartDate(pending.date);
+            toast('Fecha de inicio actualizada.');
+          } else if (pending.kind === 'restart') {
             actions.restartCycle(pending.date);
             toast('Ciclo nuevo listo.', 'success');
           } else if (pending.kind === 'restore') {
             replaceState(pending.state);
-            toast('Respaldo restaurado. Sigue con tu PIN actual.', 'success');
+            toast('Respaldo restaurado. Sigues con tu patrón actual.', 'success');
           } else if (pending.kind === 'config') {
-            actions.applyConfig(pending.habits, pending.triggers);
+            const { kind: _k, ...config } = pending;
+            void _k;
+            actions.applyConfig(config);
             toast('Configuración aplicada.', 'success');
-          } else if (pending.kind === 'removeHabit') actions.removeHabit(pending.habit.id);
-          else if (pending.kind === 'reset') void wipeAll();
+          }
         }}
       />
 
-      {overlay?.kind === 'pin' && <ChangePin onClose={() => setOverlay(null)} />}
-      {overlay?.kind === 'backupPin' && (
-        <BackupPin
-          sealed={overlay.sealed}
+      {overlay?.kind === 'pattern' && <ChangePattern onClose={() => setOverlay(null)} />}
+      {overlay?.kind === 'backup' && (
+        <BackupPattern
+          record={overlay.record}
           onClose={() => setOverlay(null)}
           onOpened={(st) => {
             setOverlay(null);
@@ -364,104 +392,211 @@ function confirmContent(p: Pending): { title: string; body: ReactNode; confirmLa
     case 'restart':
       return {
         title: 'Empezar un ciclo nuevo',
-        body: `El nuevo ciclo empezaría el ${formatLong(p.date)}. La racha y los premios se reinician; tus hábitos se conservan. Haz un respaldo antes si quieres guardar este ciclo.`,
+        body: `El nuevo ciclo empezaría hoy, ${formatLong(p.date)}. La racha, los premios y los cofres se reinician; tus hábitos y tu historial se conservan. Haz un respaldo antes si quieres guardar este ciclo.`,
         confirmLabel: 'Empezar',
       };
     case 'restore':
-      return { title: 'Restaurar respaldo', body: 'Esto reemplaza todos los datos actuales por los del respaldo.', confirmLabel: 'Restaurar', danger: true };
+      return { title: 'Restaurar respaldo', body: 'Esto reemplaza los datos de este teléfono por los del respaldo.', confirmLabel: 'Restaurar', danger: true };
     case 'config':
       return {
         title: 'Aplicar configuración',
-        body: `Tus hábitos pasarán a ser: ${p.habits.map((h) => h.name).join(', ')}. El historial se conserva.`,
+        body: `Tus hábitos pasarán a ser: ${p.habits.map((h) => h.name).join(', ')}.${p.milestones.length ? ` ${p.milestones.length} premios con precio.` : ''}${p.grand ? ` Gran premio: ${p.grand.name}.` : ''} Tu historial se conserva.`,
         confirmLabel: 'Aplicar',
       };
-    case 'removeHabit':
-      return { title: `Quitar «${p.habit.name}»`, body: 'Deja de aparecer en tu día. Lo ya marcado queda guardado.', confirmLabel: 'Quitar', danger: true };
-    case 'reset':
-      return { title: '¿Borrar todo?', body: 'Se elimina tu bitácora de este teléfono. Solo podrás recuperarla con un respaldo y su PIN.', confirmLabel: 'Borrar todo', danger: true };
     default:
       return { title: '', body: '', confirmLabel: 'Aceptar' };
   }
 }
 
-function ChangePin({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<'current' | 'new' | 'confirm'>('current');
+const VALUE_KINDS: [HabitValue['kind'] | 'none', string][] = [
+  ['none', 'Nada'],
+  ['bs', 'Bs'],
+  ['horas', 'Horas'],
+  ['dias', 'Días'],
+];
+
+function HabitEditor({ habit: h, index: i }: { habit: Habit; index: number }) {
+  const kind = h.value?.kind ?? 'none';
+  return (
+    <div className="habit-edit">
+      <details className="habit-details">
+        <summary>
+          <Icon name="pencil" size={16} /> {i + 1}. {h.name}
+        </summary>
+        <Field label="Nombre" value={h.name} max={60} onCommit={(v) => v && actions.updateHabit(h.id, { name: v })} />
+        <Field label="Pregunta del día" value={h.q} max={120} onCommit={(v) => v && actions.updateHabit(h.id, { q: v })} />
+        <div className="row2">
+          <Field label="Botón de cumplir" value={h.ok} max={24} onCommit={(v) => v && actions.updateHabit(h.id, { ok: v })} />
+          <Field label="Botón de caída" value={h.fail} max={24} onCommit={(v) => v && actions.updateHabit(h.id, { fail: v })} />
+        </div>
+        <Field label="Tu frase" value={h.phrase} max={160} placeholder="Una frase para el momento difícil" onCommit={(v) => actions.updateHabit(h.id, { phrase: v })} />
+        <div className="lbl-field">
+          Cada día limpio suma
+          <div className="segmented" role="group" aria-label={`Qué suma ${h.name}`} style={{ marginTop: 6 }}>
+            {VALUE_KINDS.map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={kind === k}
+                onClick={() => actions.setHabitValue(h.id, k === 'none' ? null : { kind: k, amount: h.value?.amount || 1, ...(k === 'dias' ? { label: h.value?.label || h.name } : {}) })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {h.value && (
+          <div className="row2">
+            <label className="lbl-field">
+              {h.value.kind === 'bs' ? 'Bs por día' : h.value.kind === 'horas' ? 'Horas por día' : 'Días por día'}
+              <NumberField value={h.value.amount} label={`Cantidad de ${h.name}`} onCommit={(n) => actions.setHabitValue(h.id, { ...h.value!, amount: n })} />
+            </label>
+            {h.value.kind === 'dias' && (
+              <label className="lbl-field">
+                Se llama
+                <Field label="Nombre del contador" value={h.value.label ?? ''} max={40} placeholder="Ej.: Mente clara" onCommit={(v) => actions.setHabitValue(h.id, { ...h.value!, label: v || h.name })} />
+              </label>
+            )}
+          </div>
+        )}
+        <div className="habit-actions">
+          <button type="button" className="btn sm" disabled={i === 0} onClick={() => actions.moveHabit(h.id, -1)}>
+            <Icon name="chevronUp" size={16} /> Subir
+          </button>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function GrandEditor({ grand, defaultDate }: { grand: GrandPrize | null; defaultDate: ISODate }) {
+  const [name, setName] = useState(grand?.name ?? '');
+  const [price, setPrice] = useState(grand?.price ? String(grand.price) : '');
+  const [date, setDate] = useState(grand?.date ?? '');
+  const dirty = name.trim() !== (grand?.name ?? '') || price !== (grand?.price ? String(grand.price) : '') || date !== (grand?.date ?? '');
+  return (
+    <div className="item col">
+      <div className="txt">
+        <b>Gran premio</b>
+        <span>Lo ves todos los días arriba en Hoy. Se reclama {date && isValidISODate(date) ? `el ${formatLong(date)}` : `al final del ciclo (${formatLong(defaultDate)})`}.</span>
+      </div>
+      <label className="lbl-field">
+        Nombre
+        <input className="field" value={name} maxLength={60} placeholder="Tu gran premio" onChange={(e) => setName(e.target.value)} />
+      </label>
+      <div className="row2">
+        <label className="lbl-field">
+          Precio (Bs)
+          <input className="field" value={price} inputMode="numeric" placeholder="0" onChange={(e) => setPrice(e.target.value.replace(/\D/g, '').slice(0, 5))} />
+        </label>
+        <label className="lbl-field">
+          Fecha (opcional)
+          <input className="field" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+      </div>
+      <button
+        type="button"
+        className="btn primary block"
+        style={{ marginTop: 10 }}
+        disabled={!dirty || !name.trim()}
+        onClick={() => {
+          const g: GrandPrize = { name: name.trim() };
+          if (price) g.price = Number(price);
+          if (isValidISODate(date)) g.date = date;
+          actions.setGrand(g);
+          toast('Gran premio guardado.', 'success');
+        }}
+      >
+        Guardar gran premio
+      </button>
+    </div>
+  );
+}
+
+function ChangePattern({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = useState<'current' | 'new' | 'repeat'>('current');
   const [first, setFirst] = useState('');
-  const [error, setError] = useState<string>();
+  const [err, setErr] = useState<string>();
   const [reset, setReset] = useState(0);
   const [busy, setBusy] = useState(false);
-  const title = step === 'current' ? 'Tu PIN actual' : step === 'new' ? 'Nuevo PIN' : 'Repite el nuevo PIN';
+  const title = step === 'current' ? 'Tu patrón actual' : step === 'new' ? 'Nuevo patrón' : 'Repite el nuevo patrón';
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Cambiar PIN">
+    <div className="overlay" role="dialog" aria-modal="true" aria-label="Cambiar patrón">
       <button type="button" className="icon-btn overlay-close" aria-label="Cerrar" onClick={onClose}>
         <Icon name="x" />
       </button>
       <main className="lock">
         <h1>{title}</h1>
-        <PinPad
+        <PatternPad
           key={step}
-          busy={busy}
-          error={busy ? 'Un momento…' : error}
           resetKey={reset}
-          onSubmit={async (pin) => {
+          error={Boolean(err)}
+          disabled={busy}
+          onComplete={async (p) => {
             if (step === 'current') {
               setBusy(true);
-              const ok = await verifyPin(pin);
+              const ok = await verifyPattern(p);
               setBusy(false);
               if (!ok) {
-                setError('PIN incorrecto.');
+                setErr('Patrón incorrecto.');
                 setReset((r) => r + 1);
                 return;
               }
-              setError(undefined);
+              setErr(undefined);
               setStep('new');
             } else if (step === 'new') {
-              setFirst(pin);
-              setStep('confirm');
-            } else if (pin !== first) {
-              setError('No coincide. Vuelve a escribir el nuevo PIN.');
+              setFirst(p);
+              setStep('repeat');
+            } else if (p !== first) {
+              setErr('No coincide. Dibuja otra vez el nuevo patrón.');
               setStep('new');
-              setReset((r) => r + 1);
             } else {
               setBusy(true);
-              await changePin(pin);
-              toast('PIN actualizado. Haz un respaldo nuevo.', 'success');
+              await changePattern(p);
+              toast('Patrón actualizado. Haz un respaldo nuevo.', 'success');
               onClose();
             }
           }}
         />
+        <p className="pin-error" role="alert">
+          {busy ? 'Un momento…' : (err ?? '')}
+        </p>
       </main>
     </div>
   );
 }
 
-function BackupPin({ sealed, onClose, onOpened }: { sealed: Sealed; onClose: () => void; onOpened: (s: AppState) => void }) {
-  const [error, setError] = useState<string>();
+function BackupPattern({ record, onClose, onOpened }: { record: Pick<VaultRecord, 'lock' | 'data'>; onClose: () => void; onOpened: (s: AppState) => void }) {
+  const [err, setErr] = useState<string>();
   const [reset, setReset] = useState(0);
   const [busy, setBusy] = useState(false);
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="PIN del respaldo">
+    <div className="overlay" role="dialog" aria-modal="true" aria-label="Patrón del respaldo">
       <button type="button" className="icon-btn overlay-close" aria-label="Cerrar" onClick={onClose}>
         <Icon name="x" />
       </button>
       <main className="lock">
-        <h1>PIN del respaldo</h1>
+        <h1>Patrón del respaldo</h1>
         <p>El que tenías cuando hiciste este respaldo.</p>
-        <PinPad
-          busy={busy}
-          error={busy ? 'Abriendo…' : error}
+        <PatternPad
           resetKey={reset}
-          onSubmit={async (pin) => {
+          error={Boolean(err)}
+          disabled={busy}
+          onComplete={async (p) => {
             setBusy(true);
-            try {
-              onOpened(await openBackup(sealed, pin));
-            } catch (err) {
-              setBusy(false);
-              setError(err instanceof Error && err.message === 'PIN' ? 'PIN incorrecto.' : 'No se pudo abrir.');
+            const st = await openBackup(record, p);
+            setBusy(false);
+            if (!st) {
+              setErr('Patrón incorrecto.');
               setReset((r) => r + 1);
+              return;
             }
+            onOpened(st);
           }}
         />
+        <p className="pin-error" role="alert">
+          {busy ? 'Abriendo…' : (err ?? '')}
+        </p>
       </main>
     </div>
   );
@@ -476,6 +611,27 @@ function Item({ title, note, children }: { title: string; note?: string; childre
       </div>
       {children}
     </div>
+  );
+}
+
+function Stepper(props: { title: string; note: string; value: number; min: number; max: number; step: number; prefix?: string; suffix?: string; onChange: (v: number) => void }) {
+  const { title, note, value, min, max, step, prefix = '', suffix = '', onChange } = props;
+  return (
+    <Item title={title} note={note}>
+      <div className="stepper">
+        <button type="button" aria-label={`Bajar ${title}`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - step))}>
+          −
+        </button>
+        <output aria-live="polite">
+          {prefix}
+          {value}
+          {suffix}
+        </output>
+        <button type="button" aria-label={`Subir ${title}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + step))}>
+          +
+        </button>
+      </div>
+    </Item>
   );
 }
 
@@ -499,6 +655,33 @@ function Field({ label, value, max, placeholder, onCommit }: { label: string; va
       onBlur={() => {
         const clean = v.trim();
         if (clean !== value) onCommit(clean);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      }}
+    />
+  );
+}
+
+function NumberField({ value, label, onCommit }: { value: number; label: string; onCommit: (n: number) => void }) {
+  const [v, setV] = useState(String(value).replace('.', ','));
+  const [prev, setPrev] = useState(value);
+  if (value !== prev) {
+    setPrev(value);
+    setV(String(value).replace('.', ','));
+  }
+  return (
+    <input
+      className="field"
+      value={v}
+      inputMode="decimal"
+      aria-label={label}
+      enterKeyHint="done"
+      onChange={(e) => setV(e.target.value.replace(/[^\d.,]/g, '').slice(0, 7))}
+      onBlur={() => {
+        const n = Number(v.replace(',', '.'));
+        if (Number.isFinite(n) && n >= 0 && n !== value) onCommit(Math.round(n * 100) / 100);
+        else setV(String(value).replace('.', ','));
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.target as HTMLInputElement).blur();

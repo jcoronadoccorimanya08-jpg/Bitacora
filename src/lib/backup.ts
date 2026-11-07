@@ -1,78 +1,81 @@
+/**
+ * Respaldo cifrado como texto (.txt): Chrome en Android no comparte .json, pero sí .txt (Drive, WhatsApp, Archivos).
+ * También lee el archivo o texto de configuración (hábitos, disparadores y premios).
+ */
 import { todayISO } from './dates';
-import { deriveKey, fromB64, isSealed, unseal, type Sealed } from './crypto';
-import { sanitizeHabits, sanitizeState, sanitizeTriggers } from './sanitize';
-import type { AppState, Habit } from './types';
+import { isWrapped } from './crypto';
+import { sanitizeGrand, sanitizeHabits, sanitizeMilestones, sanitizeTriggers } from './sanitize';
+import type { GrandPrize, Habit, Milestone } from './types';
+import type { VaultRecord } from './vault';
 
 const APP_ID = 'bitacora';
-
-interface BackupFile {
-  app: typeof APP_ID;
-  kind: 'backup';
-  schema: 1;
-  exportedAt: string;
-  sealed: Sealed;
-}
+type BackupRecord = Pick<VaultRecord, 'v' | 'lock' | 'data'>;
 
 export function backupFileName(): string {
-  return `bitacora-${todayISO()}.json`;
+  return `bitacora-${todayISO()}.txt`;
 }
 
-export function serializeBackup(sealed: Sealed): string {
-  const file: BackupFile = { app: APP_ID, kind: 'backup', schema: 1, exportedAt: new Date().toISOString(), sealed };
-  return JSON.stringify(file);
+export function serializeBackup(record: BackupRecord): string {
+  return JSON.stringify({ app: APP_ID, kind: 'backup', schema: 2, exportedAt: new Date().toISOString(), vault: record });
 }
 
-export type ParsedFile = { kind: 'backup'; sealed: Sealed } | { kind: 'config'; habits: Habit[]; triggers: string[] };
+export interface ConfigData {
+  habits: Habit[];
+  triggers: string[];
+  milestones: Milestone[];
+  grand: GrandPrize | null;
+  partyBonus: number;
+}
 
-/** Reconoce un respaldo cifrado o un archivo de configuración. Lanza un Error claro si no sirve. */
+export type ParsedFile = { kind: 'backup'; record: BackupRecord } | ({ kind: 'config' } & ConfigData);
+
+/** Reconoce un respaldo cifrado o una configuración. Lanza un Error claro si no sirve. */
 export function parseFile(text: string): ParsedFile {
   let raw: unknown;
   try {
-    raw = JSON.parse(text);
+    raw = JSON.parse(text.trim());
   } catch {
-    throw new Error('El archivo no es válido.');
+    throw new Error('El texto no es válido.');
   }
   const o = raw as Record<string, unknown> | null;
   if (!o || o.app !== APP_ID) throw new Error('Este archivo no es de Bitácora.');
   if (o.kind === 'backup') {
-    if (!isSealed(o.sealed)) throw new Error('El respaldo está dañado.');
-    return { kind: 'backup', sealed: o.sealed };
+    const v = o.vault as Partial<VaultRecord> | undefined;
+    if (!v || v.v !== 2 || !isWrapped(v.data) || !v.lock?.pattern || !isWrapped(v.lock.pattern.wrapped)) {
+      throw new Error('Este respaldo es de una versión anterior o está dañado.');
+    }
+    return { kind: 'backup', record: { v: 2, lock: { pattern: v.lock.pattern }, data: v.data } };
   }
   if (o.kind === 'config') {
     const habits = sanitizeHabits(o.habits);
     if (!habits.length) throw new Error('La configuración no tiene hábitos.');
-    return { kind: 'config', habits, triggers: sanitizeTriggers(o.triggers) };
+    return {
+      kind: 'config',
+      habits,
+      triggers: sanitizeTriggers(o.triggers),
+      milestones: sanitizeMilestones(o.milestones),
+      grand: sanitizeGrand(o.grand),
+      partyBonus: typeof o.partyBonus === 'number' && o.partyBonus >= 0 ? Math.round(o.partyBonus) : 0,
+    };
   }
   throw new Error('Tipo de archivo desconocido.');
 }
 
-/** Abre un respaldo con su PIN. Lanza 'PIN' si el PIN no es el correcto. */
-export async function openBackup(sealed: Sealed, pin: string): Promise<AppState> {
-  const key = await deriveKey(pin, fromB64(sealed.salt), sealed.iter);
-  let raw: unknown;
-  try {
-    raw = await unseal(key, sealed);
-  } catch {
-    throw new Error('PIN');
-  }
-  const state = sanitizeState(raw);
-  if (!state) throw new Error('El respaldo está incompleto.');
-  return state;
+function textFile(text: string): File {
+  return new File([text], backupFileName(), { type: 'text/plain' });
 }
 
 export function canShareFiles(): boolean {
   try {
-    const probe = new File(['{}'], 'probe.json', { type: 'application/json' });
-    return typeof navigator.canShare === 'function' && navigator.canShare({ files: [probe] });
+    return typeof navigator.canShare === 'function' && navigator.canShare({ files: [textFile('{}')] });
   } catch {
     return false;
   }
 }
 
-export async function shareText(json: string): Promise<'shared' | 'cancelled'> {
-  const file = new File([json], backupFileName(), { type: 'application/json' });
+export async function shareBackupText(text: string): Promise<'shared' | 'cancelled'> {
   try {
-    await navigator.share({ files: [file], title: 'Respaldo' });
+    await navigator.share({ files: [textFile(text)], title: 'Respaldo' });
     return 'shared';
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
@@ -80,8 +83,8 @@ export async function shareText(json: string): Promise<'shared' | 'cancelled'> {
   }
 }
 
-export function downloadText(json: string): void {
-  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+export function downloadBackupText(text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
   const a = document.createElement('a');
   a.href = url;
   a.download = backupFileName();

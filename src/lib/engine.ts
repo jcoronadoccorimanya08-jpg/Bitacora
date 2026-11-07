@@ -53,7 +53,13 @@ export function hasFail(days: Days, date: ISODate, habits: Habit[]): boolean {
 }
 
 export function isClean(days: Days, date: ISODate, habits: Habit[]): boolean {
-  return habits.length > 0 && okCount(days, date, habits) === habits.length;
+  return Boolean(days[date]?.wildcard) || (habits.length > 0 && okCount(days, date, habits) === habits.length);
+}
+
+/** Porcentaje de hábitos limpios de un día (un día salvado con comodín vale 100). */
+export function dayPct(days: Days, date: ISODate, habits: Habit[]): number {
+  if (days[date]?.wildcard) return 100;
+  return habits.length ? (okCount(days, date, habits) / habits.length) * 100 : 0;
 }
 
 export function dayState(s: Cycle, days: Days, habits: Habit[], date: ISODate, today: ISODate): DayState {
@@ -81,8 +87,9 @@ export function streakStats(s: Settings, days: Days, today: ISODate): StreakStat
   const H = s.habits.length;
   for (const d of rangeDates(s.startDate, ref)) {
     const n = okCount(days, d, s.habits);
-    if (d === today && n < H && !hasFail(days, d, s.habits)) continue; // hoy todavía se puede completar
-    if (H > 0 && n === H) {
+    const saved = Boolean(days[d]?.wildcard);
+    if (d === today && !saved && n < H && !hasFail(days, d, s.habits)) continue; // hoy todavía se puede completar
+    if (saved || (H > 0 && n === H)) {
       run++;
       misses = 0;
     } else {
@@ -169,4 +176,57 @@ export function lastDays(s: Cycle, today: ISODate, n: number): ISODate[] {
 
 export function cleanDaysIn(days: Days, dates: ISODate[], habits: Habit[]): number {
   return dates.filter((d) => isClean(days, d, habits)).length;
+}
+
+export interface Savings {
+  /** Bs que dejaste de gastar (por hábito con valor en Bs) más los «Dije no a una fiesta». */
+  bs: number;
+  horas: number;
+  /** Días limpios de los hábitos que se cuentan en días (por ejemplo, «Mente clara»). */
+  dias: { habit: Habit; days: number; label: string }[];
+  parties: number;
+  byHabit: { habit: Habit; kind: 'bs' | 'horas' | 'dias'; total: number }[];
+}
+
+/** Ahorro y contadores: cada día limpio suma el valor de cada hábito. Una caída no suma, pero no resta. */
+export function savings(s: Settings, days: Days, today: ISODate): Savings {
+  const ref = lastPlayableDay(s, today);
+  const dates = ref < s.startDate ? [] : rangeDates(s.startDate, ref);
+  const byHabit = s.habits
+    .filter((h) => h.value)
+    .map((h) => {
+      const okDays = dates.filter((d) => markOf(days, d, h.id) === 'ok').length;
+      return { habit: h, kind: h.value!.kind, total: Math.round(okDays * h.value!.amount * 100) / 100 };
+    });
+  const parties = dates.filter((d) => days[d]?.party).length;
+  return {
+    bs: Math.round(byHabit.filter((x) => x.kind === 'bs').reduce((a, b) => a + b.total, 0) + parties * s.partyBonus),
+    horas: Math.round(byHabit.filter((x) => x.kind === 'horas').reduce((a, b) => a + b.total, 0) * 10) / 10,
+    dias: byHabit.filter((x) => x.kind === 'dias').map((x) => ({ habit: x.habit, days: x.total, label: x.habit.value?.label || x.habit.name })),
+    parties,
+    byHabit,
+  };
+}
+
+/** Serie diaria para la montaña: porcentaje limpio de cada día y promedio de 7 días. */
+export function dailySeries(s: Settings, days: Days, today: ISODate): { date: ISODate; pct: number; avg7: number; won: boolean }[] {
+  const ref = lastPlayableDay(s, today);
+  if (ref < s.startDate) return [];
+  const dates = rangeDates(s.startDate, ref);
+  if (ref === today && !s.habits.some((h) => markOf(days, today, h.id)) && !days[today]?.wildcard) dates.pop();
+  const pcts = dates.map((d) => dayPct(days, d, s.habits));
+  return dates.map((date, i) => {
+    const slice = pcts.slice(Math.max(0, i - 6), i + 1);
+    return { date, pct: pcts[i]!, avg7: slice.reduce((a, b) => a + b, 0) / slice.length, won: isClean(days, date, s.habits) };
+  });
+}
+
+/** Porcentaje promedio de una semana del ciclo (bloques de 7 días desde el inicio). */
+export function weekPct(s: Settings, days: Days, weekIndex: number, today: ISODate): number | null {
+  const start = addDays(s.startDate, (weekIndex - 1) * 7);
+  if (today < start) return null;
+  const end = minDate(addDays(start, 6), lastPlayableDay(s, today));
+  const dates = rangeDates(start, end);
+  if (!dates.length) return null;
+  return dates.reduce((sum, d) => sum + dayPct(days, d, s.habits), 0) / dates.length;
 }

@@ -1,18 +1,25 @@
 import { useLayoutEffect, useRef } from 'react';
+import { Mountain } from '../components/Mountain';
+import { ReportCard } from '../components/ReportCard';
 import { ScreenHeader, SectionTitle } from '../components/ui';
+import { STEP } from '../lib/config';
 import { addDays, formatLong, formatRange, maxDate, minDate, rangeDates, type ISODate } from '../lib/dates';
 import {
   cleanDaysIn,
   countedDays,
   cycleEnd,
+  dailySeries,
   dayNumber,
   fallsByWeekday,
   habitStats,
   lastDays,
   markOf,
+  savings,
   streakStats,
   triggerCounts,
+  weekPct,
 } from '../lib/engine';
+import { buildReport, formatHours } from '../lib/report';
 import type { AppState } from '../lib/types';
 
 const DIAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -30,6 +37,10 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
   const byDay = fallsByWeekday(s, state.days, counted);
   const maxDay = Math.max(1, ...byDay);
   const worstDay = byDay.some((n) => n > 0) ? ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][byDay.indexOf(Math.max(...byDay))] : null;
+  const series = dailySeries(s, state.days, today);
+  const sv = savings(s, state.days, today);
+  const weeks = Math.ceil(s.cycleLength / STEP);
+  const report = buildReport(state, today);
 
   return (
     <>
@@ -56,6 +67,63 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
           <span>de tus días</span>
         </div>
       </div>
+
+      <SectionTitle aside="toca para ver un día">Tu montaña</SectionTitle>
+      <section className="card">
+        {series.length ? (
+          <Mountain data={series} goal={100} onPick={onOpenDay} />
+        ) : (
+          <p style={{ marginTop: 0 }}>Aparece cuando marques tu primer día.</p>
+        )}
+      </section>
+
+      <SectionTitle aside="promedio de cada semana">Tus semanas</SectionTitle>
+      <section className="card">
+        <div className="weeks-chart" role="img" aria-label="Porcentaje limpio de cada semana">
+          {Array.from({ length: weeks }, (_, i) => {
+            const p = weekPct(s, state.days, i + 1, today);
+            const cls = p === null ? '' : p >= 80 ? 'won' : 'active';
+            return (
+              <div key={i} className={`col ${cls}`}>
+                <b>{p === null ? '' : Math.round(p)}</b>
+                <div className="track">
+                  <i style={{ height: `${p === null ? 0 : Math.max(3, p)}%` }} />
+                </div>
+                <span>{i + 1}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="muted" style={{ fontSize: 13 }}>
+          Semana de 80 % o más, en verde.
+        </p>
+      </section>
+
+      {sv.byHabit.length > 0 && (
+        <>
+          <SectionTitle aside={`Bs ${sv.bs} en total`}>Lo que ganaste</SectionTitle>
+          <section className="card">
+            {sv.byHabit.map((x) => (
+              <div key={x.habit.id} className="hstat">
+                <div className="hstat-head">
+                  <b>{x.habit.name}</b>
+                  <span>{x.kind === 'bs' ? `Bs ${x.total}` : x.kind === 'horas' ? formatHours(x.total) : `${x.total} ${x.total === 1 ? 'día' : 'días'}${x.habit.value?.label ? ` · ${x.habit.value.label.toLowerCase()}` : ''}`}</span>
+                </div>
+              </div>
+            ))}
+            {sv.parties > 0 && (
+              <div className="hstat">
+                <div className="hstat-head">
+                  <b>Dijiste no a una fiesta</b>
+                  <span>
+                    {sv.parties} × Bs {s.partyBonus}
+                  </span>
+                </div>
+              </div>
+            )}
+          </section>
+        </>
+      )}
 
       <SectionTitle aside={week.length ? formatRange(week[0]!, week[week.length - 1]!) : undefined}>Resumen de la semana</SectionTitle>
       <section className="card">
@@ -90,6 +158,9 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
           </>
         )}
       </section>
+
+      <SectionTitle>Reporte de la semana</SectionTitle>
+      <ReportCard state={state} today={today} report={report} />
 
       <SectionTitle aside="toca un cuadro para corregir">Historial</SectionTitle>
       <section className="card">
@@ -167,7 +238,8 @@ function History({ state, today, onOpenDay }: { state: AppState; today: ISODate;
               <div className="cells">
                 {days.map((d) => {
                   const fut = d > today;
-                  const m = markOf(state.days, d, h.id);
+                  const saved = Boolean(state.days[d]?.wildcard);
+                  const m = markOf(state.days, d, h.id) ?? (saved ? 'ok' : undefined);
                   const n = dayNumber(s.startDate, d);
                   return (
                     <button
@@ -176,7 +248,7 @@ function History({ state, today, onOpenDay }: { state: AppState; today: ISODate;
                       className={`hcell ${fut ? 'future' : m ?? ''} ${n % 7 === 0 ? 'mark' : ''}`}
                       data-today={d === today ? '' : undefined}
                       disabled={fut}
-                      aria-label={`${h.name}, ${formatLong(d)}: ${fut ? 'por venir' : m === 'ok' ? 'limpio' : m === 'fail' ? 'caída' : 'sin marcar'}`}
+                      aria-label={`${h.name}, ${formatLong(d)}: ${fut ? 'por venir' : m === 'ok' ? (saved ? 'salvado con comodín' : 'limpio') : m === 'fail' ? 'caída' : 'sin marcar'}`}
                       onClick={() => onOpenDay(d)}
                     />
                   );

@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ConfettiHost } from './components/Confetti';
 import { BottomNav, ToastHost, type Tab } from './components/ui';
 import { UpdateBanner, useServiceWorker } from './components/UpdateBanner';
-import { canShareFiles, downloadText, serializeBackup, shareText } from './lib/backup';
-import { isEarned, lastPlayableDay, milestones, streakStats } from './lib/engine';
+import { canShareFiles, downloadBackupText, serializeBackup, shareBackupText } from './lib/backup';
+import { lastPlayableDay, streakStats } from './lib/engine';
 import { toast } from './lib/feedback';
 import { useMediaQuery, useToday } from './lib/hooks';
-import { actions, currentSealed, getState, lock, onSaveError, useStore } from './lib/store';
+import { claimable, grandStatus, pendingChests, steps, withClaims } from './lib/rewards';
+import { actions, currentBackup, getState, lock, onSaveError, useStore } from './lib/store';
 import type { ISODate } from './lib/dates';
 import type { Theme } from './lib/types';
 import { InsightsScreen } from './screens/Insights';
@@ -44,7 +46,7 @@ function useTheme(theme: Theme) {
 
 export function App() {
   const sw = useServiceWorker();
-  const { phase, state } = useStore();
+  const { phase, state, hasBio } = useStore();
   const today = useToday();
   const [tab, setTab] = useState<Tab>('hoy');
   const [selected, setSelected] = useState<ISODate>(today);
@@ -74,7 +76,8 @@ export function App() {
 
   useEffect(() => {
     if (phase === 'unlocked') setSelected(today);
-    if (phase !== 'unlocked') setTab('hoy');
+    else setTab('hoy');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   useEffect(() => {
@@ -88,15 +91,9 @@ export function App() {
     window.scrollTo({ top: 0 });
   }, [tab]);
 
-  const curtainEl = curtain ? (
-    <div className="curtain" aria-hidden="true">
-      <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" />
-    </div>
-  ) : null;
-
-  if (phase === 'loading') return <div className="app" aria-busy="true" />;
   const updateBanner = <UpdateBanner needRefresh={sw.needRefresh} onUpdate={sw.update} />;
 
+  if (phase === 'loading') return <div className="app" aria-busy="true" />;
   if (phase === 'setup')
     return (
       <>
@@ -107,7 +104,7 @@ export function App() {
   if (phase === 'locked' || !state)
     return (
       <>
-        <LockScreen updateBanner={updateBanner} />
+        <LockScreen hasBio={hasBio} updateBanner={updateBanner} />
         <ToastHost />
       </>
     );
@@ -115,21 +112,21 @@ export function App() {
   const s = state.settings;
   const playable = lastPlayableDay(s, today);
   const sel = today < s.startDate ? today : selected < s.startDate ? s.startDate : selected > playable ? playable : selected;
-  const best = streakStats(s, state.days, today).best;
-  const pending = milestones(s.cycleLength).filter((_, i) => isEarned(i + 1, best) && !state.rewards[String(i + 1)]?.claimedAt).length;
+  const list = withClaims(steps(s, streakStats(s, state.days, today).best), state);
+  const badge = claimable(list).length + pendingChests(list, state).length + (grandStatus(s, state, today).kind === 'available' ? 1 : 0);
 
   const quickBackup = async () => {
     try {
-      const sealed = await currentSealed();
-      if (!sealed) return;
-      const json = serializeBackup(sealed);
+      const rec = await currentBackup();
+      if (!rec) return;
+      const text = serializeBackup(rec);
       if (canShareFiles()) {
-        if ((await shareText(json)) === 'cancelled') return;
-      } else downloadText(json);
+        if ((await shareBackupText(text)) === 'cancelled') return;
+      } else downloadBackupText(text);
       actions.markBackup();
-      toast('Respaldo cifrado listo.', 'success');
+      toast('Respaldo listo.', 'success');
     } catch {
-      toast('No se pudo crear el respaldo.', 'error');
+      toast('No se pudo crear el respaldo. Prueba desde Ajustes → Respaldo.', 'error');
     }
   };
 
@@ -141,6 +138,7 @@ export function App() {
           <TodayScreen
             state={state}
             today={today}
+            hasBio={hasBio}
             selected={sel}
             onSelect={setSelected}
             onGo={(t) => setTab(t)}
@@ -158,11 +156,16 @@ export function App() {
             }}
           />
         )}
-        {tab === 'ajustes' && <SettingsScreen state={state} today={today} />}
+        {tab === 'ajustes' && <SettingsScreen state={state} today={today} hasBio={hasBio} />}
       </div>
-      <BottomNav tab={tab} onChange={setTab} rewardsPending={pending} />
+      <BottomNav tab={tab} onChange={setTab} rewardsPending={badge} />
       <ToastHost />
-      {curtainEl}
+      <ConfettiHost />
+      {curtain && (
+        <div className="curtain" aria-hidden="true">
+          <img src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" />
+        </div>
+      )}
     </>
   );
 }

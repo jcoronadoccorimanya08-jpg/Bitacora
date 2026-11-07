@@ -61,3 +61,57 @@ export function isSealed(v: unknown): v is Sealed {
   const o = v as Record<string, unknown>;
   return o.v === 1 && typeof o.iter === 'number' && typeof o.salt === 'string' && typeof o.iv === 'string' && typeof o.ct === 'string';
 }
+
+// ---------- Cifrado por sobre (Bitácora) ----------
+// Los datos se cifran con una llave al azar (DK). La DK se guarda "envuelta" con una llave que sale
+// del patrón (PBKDF2) y, si la activas, otra que sale de tu huella (passkey con PRF).
+// Así cambiar el patrón o activar la huella no obliga a re-cifrar los datos.
+
+export interface Wrapped {
+  iv: string;
+  ct: string;
+}
+
+export function newDataKey(): Uint8Array<ArrayBuffer> {
+  return randomBytes(32);
+}
+
+export async function importDataKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+export async function encryptBytes(key: CryptoKey, bytes: Uint8Array<ArrayBuffer>): Promise<Wrapped> {
+  const iv = randomBytes(12);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes));
+  return { iv: toB64(iv), ct: toB64(ct) };
+}
+
+/** Lanza un error si la llave no es la correcta. */
+export async function decryptBytes(key: CryptoKey, w: Wrapped): Promise<Uint8Array<ArrayBuffer>> {
+  return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(w.iv) }, key, fromB64(w.ct)));
+}
+
+export async function encryptJSON(key: CryptoKey, data: unknown): Promise<Wrapped> {
+  return encryptBytes(key, new TextEncoder().encode(JSON.stringify(data)));
+}
+
+export async function decryptJSON(key: CryptoKey, w: Wrapped): Promise<unknown> {
+  return JSON.parse(new TextDecoder().decode(await decryptBytes(key, w)));
+}
+
+/** Llave para envolver la DK a partir de la salida PRF de la passkey (32 bytes). */
+export async function keyFromPrf(prfOutput: ArrayBuffer | Uint8Array): Promise<CryptoKey> {
+  const raw = prfOutput instanceof Uint8Array ? prfOutput : new Uint8Array(prfOutput);
+  const base = await crypto.subtle.importKey('raw', raw as Uint8Array<ArrayBuffer>, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(16), info: new TextEncoder().encode('bitacora-huella-v1') },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+export function isWrapped(v: unknown): v is Wrapped {
+  return typeof v === 'object' && v !== null && typeof (v as Wrapped).iv === 'string' && typeof (v as Wrapped).ct === 'string';
+}

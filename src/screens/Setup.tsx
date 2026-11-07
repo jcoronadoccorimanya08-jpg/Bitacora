@@ -1,37 +1,38 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { InstallCard } from '../components/InstallCard';
 import { Icon } from '../components/Icon';
-import { PinPad } from '../components/PinPad';
+import { InstallCard } from '../components/InstallCard';
+import { PatternPad } from '../components/PatternPad';
+import { parseFile, type ConfigData } from '../lib/backup';
 import { APP_NAME, DEFAULT_TRIGGERS, HABIT_SUGGESTIONS, MAX_HABITS, NEW_HABIT, type HabitTemplate } from '../lib/config';
-import { openBackup, parseFile } from '../lib/backup';
-import type { Sealed } from '../lib/crypto';
-import { addDays, formatLong, formatRange, isValidISODate, nextMonday, weekday, type ISODate } from '../lib/dates';
+import { addDays, formatLong, formatRange, isValidISODate, type ISODate } from '../lib/dates';
 import { toast } from '../lib/feedback';
 import { slugId } from '../lib/sanitize';
-import { createVault, initialState } from '../lib/store';
+import { createVault, initialState, openBackup } from '../lib/store';
 import type { Habit } from '../lib/types';
+import type { VaultRecord } from '../lib/vault';
 
-type Step = 'welcome' | 'backup' | 'habits' | 'start' | 'pin' | 'pin2';
+type Step = 'welcome' | 'habits' | 'start' | 'pattern' | 'pattern2' | 'restorePattern';
+type StartChoice = 'today' | 'tomorrow' | 'custom';
+type Extras = Omit<ConfigData, 'habits' | 'triggers'>;
 
 export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: ReactNode }) {
   const [step, setStep] = useState<Step>('welcome');
   const [habits, setHabits] = useState<Habit[]>([]);
   const [triggers, setTriggers] = useState<string[]>(DEFAULT_TRIGGERS);
+  const [extras, setExtras] = useState<Extras | null>(null);
   const [custom, setCustom] = useState('');
-  const isMonday = weekday(today) === 1;
-  const monday = nextMonday(today);
-  const [startChoice, setStartChoice] = useState<'today' | 'monday' | 'custom'>(isMonday ? 'today' : 'monday');
-  const [customDate, setCustomDate] = useState<ISODate>(today);
-  const [pin1, setPin1] = useState('');
-  const [pinError, setPinError] = useState<string>();
+  const tomorrow = addDays(today, 1);
+  const [choice, setChoice] = useState<StartChoice>('tomorrow');
+  const [customDate, setCustomDate] = useState<ISODate>(tomorrow);
+  const start = choice === 'today' ? today : choice === 'tomorrow' ? tomorrow : customDate;
+  const [first, setFirst] = useState('');
+  const [err, setErr] = useState<string>();
   const [reset, setReset] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [sealed, setSealed] = useState<Sealed | null>(null);
+  const [backup, setBackup] = useState<Pick<VaultRecord, 'lock' | 'data'> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [pasting, setPasting] = useState(false);
   const [pasted, setPasted] = useState('');
-
-  const startDate = startChoice === 'today' ? today : startChoice === 'monday' ? monday : customDate;
 
   const addHabit = (t: HabitTemplate) => {
     setHabits((list) => {
@@ -48,28 +49,28 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
       return next;
     });
 
-  const onFile = async (file: File) => loadText(await file.text());
-
   const loadText = (text: string) => {
     try {
       const parsed = parseFile(text);
       if (parsed.kind === 'config') {
         setHabits(parsed.habits);
         setTriggers(parsed.triggers);
-        toast('Configuración cargada.', 'success');
+        setExtras({ milestones: parsed.milestones, grand: parsed.grand, partyBonus: parsed.partyBonus });
+        toast('Configuración cargada. Revísala y sigue.', 'success');
         setStep('habits');
       } else {
-        setSealed(parsed.sealed);
-        setStep('backup');
+        setBackup(parsed.record);
+        setErr(undefined);
+        setStep('restorePattern');
       }
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Archivo inválido.', 'error');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Archivo inválido.', 'error');
     }
   };
 
-  const finish = async (pin: string) => {
+  const finish = async (pattern: string) => {
     setBusy(true);
-    await createVault(pin, initialState({ startDate, habits, triggers }));
+    await createVault(pattern, initialState({ startDate: start, habits, triggers, ...(extras ?? {}) }));
     toast('Listo. Tu bitácora está protegida.', 'success');
   };
 
@@ -77,11 +78,11 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
     <input
       ref={fileRef}
       type="file"
-      accept="application/json,.json"
+      accept="text/plain,.txt,application/json,.json"
       hidden
-      onChange={(e) => {
+      onChange={async (e) => {
         const f = e.target.files?.[0];
-        if (f) void onFile(f);
+        if (f) loadText(await f.text());
         e.target.value = '';
       }}
     />
@@ -109,20 +110,29 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
           </li>
           <li>
             <span className="pi">
-              <Icon name="gift" />
+              <Icon name="wallet" />
             </span>
             <div>
-              <b>Un premio cada 7 días</b>
-              <span>Escalones en el día 7, 14, 21… durante tu ciclo de 90 días.</span>
+              <b>Tu ahorro crece solo</b>
+              <span>Cada día limpio suma lo que no gastaste, el tiempo que recuperaste y tus días limpios.</span>
             </div>
           </li>
           <li>
             <span className="pi">
-              <Icon name="lock" />
+              <Icon name="gift" />
+            </span>
+            <div>
+              <b>Un premio cada 7 días</b>
+              <span>Premios con precio, pagados con tu ahorro, y cofres sorpresa con comodines.</span>
+            </div>
+          </li>
+          <li>
+            <span className="pi">
+              <Icon name="fingerprint" />
             </span>
             <div>
               <b>Solo tuya</b>
-              <span>Protegida con PIN y cifrada en este teléfono. No hay cuentas ni servidores.</span>
+              <span>Protegida con patrón y huella, y cifrada en este teléfono. Sin cuentas ni servidores.</span>
             </div>
           </li>
         </ul>
@@ -131,7 +141,7 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
             <Icon name="upload" size={18} /> Cargar mi configuración o un respaldo
           </button>
           <button type="button" className="btn block" onClick={() => setPasting((v) => !v)} aria-expanded={pasting}>
-            <Icon name="copy" size={18} /> Pegar mi configuración
+            <Icon name="copy" size={18} /> Pegar mi configuración o un respaldo
           </button>
           {pasting && (
             <div className="paste-box">
@@ -139,13 +149,13 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
                 value={pasted}
                 onChange={(e) => setPasted(e.target.value)}
                 placeholder='Pega aquí el texto que empieza con {"app": "bitacora"'
-                aria-label="Configuración en texto"
+                aria-label="Configuración o respaldo en texto"
                 spellCheck={false}
                 autoCapitalize="off"
                 autoCorrect="off"
               />
               <button type="button" className="btn primary block" disabled={!pasted.trim()} onClick={() => loadText(pasted)}>
-                Usar esta configuración
+                Usar este texto
               </button>
             </div>
           )}
@@ -158,45 +168,15 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
     );
   }
 
-  if (step === 'backup' && sealed) {
-    return (
-      <main className="lock">
-        <h1>Restaurar respaldo</h1>
-        <p>Ingresa el PIN que tenías cuando hiciste este respaldo. Será tu PIN desde ahora.</p>
-        <PinPad
-          busy={busy}
-          error={busy ? 'Abriendo…' : pinError}
-          resetKey={reset}
-          submitLabel="Restaurar"
-          onSubmit={async (pin) => {
-            setBusy(true);
-            try {
-              const state = await openBackup(sealed, pin);
-              await createVault(pin, state);
-              toast('Respaldo restaurado.', 'success');
-            } catch (err) {
-              setBusy(false);
-              setPinError(err instanceof Error && err.message === 'PIN' ? 'PIN incorrecto.' : 'No se pudo restaurar.');
-              setReset((r) => r + 1);
-            }
-          }}
-        />
-        <button type="button" className="link-btn" onClick={() => setStep('welcome')}>
-          Volver
-        </button>
-      </main>
-    );
-  }
-
   if (step === 'habits') {
     const available = HABIT_SUGGESTIONS.filter((t) => !habits.some((h) => h.name.toLowerCase() === t.name.toLowerCase()));
     return (
       <main className="onb" style={{ justifyContent: 'flex-start' }}>
         <StepDots step={1} />
         <div>
-          <h1 style={{ fontSize: 32 }}>¿Qué quieres dejar?</h1>
+          <h1 className="onb-title">¿Qué quieres dejar?</h1>
           <p className="muted" style={{ marginTop: 6 }}>
-            Hasta {MAX_HABITS}, en orden de prioridad. Luego puedes editar la pregunta, los botones y tu frase de cada uno en Ajustes.
+            Hasta {MAX_HABITS}, en orden de prioridad. En Ajustes cambias la pregunta, los botones, tu frase y lo que suma cada día limpio.
           </p>
         </div>
         {habits.length > 0 && (
@@ -205,16 +185,27 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
               <li key={h.id}>
                 <span>
                   {i + 1}. {h.name}
+                  {h.value && h.value.amount > 0 && (
+                    <small className="muted"> · +{h.value.kind === 'bs' ? `Bs ${h.value.amount}` : h.value.kind === 'horas' ? `${h.value.amount}\u00a0h` : `${h.value.amount} día`}</small>
+                  )}
                 </span>
                 <button type="button" className="icon-btn" aria-label={`Subir ${h.name}`} disabled={i === 0} onClick={() => moveUp(i)}>
                   <Icon name="chevronUp" size={20} />
                 </button>
-                <button type="button" className="icon-btn danger" aria-label={`Quitar ${h.name}`} onClick={() => removeHabit(h.id)}>
+                <button type="button" className="icon-btn danger" aria-label={`Sacar ${h.name}`} onClick={() => removeHabit(h.id)}>
                   <Icon name="x" size={20} />
                 </button>
               </li>
             ))}
           </ol>
+        )}
+        {extras && (extras.milestones.length > 0 || extras.grand) && (
+          <p className="fine" style={{ textAlign: 'left' }}>
+            {extras.milestones.length ? `${extras.milestones.length} premios con precio` : ''}
+            {extras.milestones.length && extras.grand ? ' · ' : ''}
+            {extras.grand ? `gran premio: ${extras.grand.name}` : ''}
+            {extras.partyBonus ? ` · «Dije no a una fiesta» +Bs ${extras.partyBonus}` : ''}
+          </p>
         )}
         {habits.length < MAX_HABITS && (
           <>
@@ -269,57 +260,47 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
   }
 
   if (step === 'start') {
-    const valid = isValidISODate(startDate);
+    const valid = isValidISODate(start);
+    const options: [StartChoice, string, string][] = [
+      ['today', 'Hoy', formatLong(today)],
+      ['tomorrow', 'Mañana', formatLong(tomorrow)],
+    ];
     return (
       <main className="onb">
         <StepDots step={2} />
         <div>
-          <h1 style={{ fontSize: 32 }}>¿Cuándo empiezas?</h1>
+          <h1 className="onb-title">¿Cuándo empiezas?</h1>
           <p className="muted" style={{ marginTop: 6 }}>
-            Tu ciclo dura 90 días.
+            Tu ciclo dura 90 días. Cada escalón cae cada 7 días de racha.
           </p>
         </div>
         <section>
-          <button type="button" className="choice" aria-pressed={startChoice === 'today'} onClick={() => setStartChoice('today')}>
-            <span className="radio" />
-            <div>
-              <b>Hoy</b>
-              <span>{formatLong(today)}</span>
-            </div>
-          </button>
-          {!isMonday && (
-            <button type="button" className="choice" aria-pressed={startChoice === 'monday'} onClick={() => setStartChoice('monday')}>
+          {options.map(([id, title, sub]) => (
+            <button key={id} type="button" className="choice" aria-pressed={choice === id} onClick={() => setChoice(id)}>
               <span className="radio" />
               <div>
-                <b>El lunes {formatLong(monday).split(' ').slice(1).join(' ')}</b>
-                <span>Cada escalón cae en domingo: buen día para revisar la semana.</span>
+                <b>{title}</b>
+                <span>{sub}</span>
               </div>
             </button>
-          )}
-          <button type="button" className="choice" aria-pressed={startChoice === 'custom'} onClick={() => setStartChoice('custom')}>
+          ))}
+          <button type="button" className="choice" aria-pressed={choice === 'custom'} onClick={() => setChoice('custom')}>
             <span className="radio" />
             <div>
               <b>Otra fecha</b>
-              <span>{startChoice === 'custom' && isValidISODate(customDate) ? formatLong(customDate) : 'Elige el día de inicio'}</span>
+              <span>{choice === 'custom' && isValidISODate(customDate) ? formatLong(customDate) : 'Elige el día de inicio'}</span>
             </div>
           </button>
-          {startChoice === 'custom' && (
-            <input
-              className="field"
-              style={{ marginTop: 8 }}
-              type="date"
-              value={customDate}
-              onChange={(e) => setCustomDate(e.target.value)}
-              aria-label="Fecha de inicio"
-            />
+          {choice === 'custom' && (
+            <input className="field" style={{ marginTop: 8 }} type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} aria-label="Fecha de inicio" />
           )}
         </section>
-        {valid && <p className="fine">Del {formatRange(startDate, addDays(startDate, 89))}.</p>}
+        {valid && <p className="fine">Ciclo: {formatRange(start, addDays(start, 89))}.</p>}
         <div className="btn-row">
           <button type="button" className="btn" onClick={() => setStep('habits')}>
             Atrás
           </button>
-          <button type="button" className="btn primary" disabled={!valid} onClick={() => setStep('pin')}>
+          <button type="button" className="btn primary" disabled={!valid} onClick={() => setStep('pattern')}>
             Siguiente
           </button>
         </div>
@@ -327,37 +308,71 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
     );
   }
 
-  // Crear y confirmar el PIN
+  if (step === 'pattern' || step === 'pattern2') {
+    return (
+      <main className="lock">
+        <StepDots step={3} />
+        <h1>{step === 'pattern' ? 'Crea tu patrón' : 'Repite tu patrón'}</h1>
+        <p>
+          {step === 'pattern'
+            ? 'Une al menos 4 puntos. Te lo pedirá al abrir la app. Después puedes activar tu huella. Si lo olvidas no hay forma de recuperar los datos: haz respaldos.'
+            : 'Dibújalo otra vez para confirmar.'}
+        </p>
+        <PatternPad
+          key={step}
+          resetKey={reset}
+          error={Boolean(err)}
+          disabled={busy}
+          onComplete={(p) => {
+            if (step === 'pattern') {
+              setFirst(p);
+              setErr(undefined);
+              setStep('pattern2');
+            } else if (p !== first) {
+              setErr('No coincide. Vuelve a crearlo.');
+              setReset((r) => r + 1);
+              setStep('pattern');
+            } else void finish(p);
+          }}
+        />
+        <p className="pin-error" role="alert">
+          {busy ? 'Protegiendo tus datos…' : (err ?? '')}
+        </p>
+        <button type="button" className="link-btn" disabled={busy} onClick={() => setStep('start')}>
+          Atrás
+        </button>
+      </main>
+    );
+  }
+
+  // restorePattern
   return (
     <main className="lock">
-      <StepDots step={3} />
-      <h1>{step === 'pin' ? 'Crea tu PIN' : 'Repite tu PIN'}</h1>
-      <p>
-        {step === 'pin'
-          ? 'De 4 a 8 números. Te lo pedirá al abrir la app. Si lo olvidas no hay forma de recuperar los datos, así que haz respaldos.'
-          : 'Escríbelo otra vez para confirmar.'}
-      </p>
-      <PinPad
-        key={step}
-        busy={busy}
-        error={busy ? 'Protegiendo tus datos…' : pinError}
+      <h1>Patrón del respaldo</h1>
+      <p>Dibuja el patrón que tenías cuando hiciste el respaldo. Será tu patrón desde ahora.</p>
+      <PatternPad
         resetKey={reset}
-        submitLabel={step === 'pin' ? 'Siguiente' : 'Crear'}
-        onSubmit={(pin) => {
-          if (step === 'pin') {
-            setPin1(pin);
-            setPinError(undefined);
-            setStep('pin2');
-          } else if (pin !== pin1) {
-            setPinError('No coincide. Vuelve a crearlo.');
-            setPin1('');
+        error={Boolean(err)}
+        disabled={busy}
+        onComplete={async (p) => {
+          if (!backup) return;
+          setBusy(true);
+          const st = await openBackup(backup, p);
+          if (!st) {
+            setBusy(false);
+            setErr('Patrón incorrecto.');
             setReset((r) => r + 1);
-            setStep('pin');
-          } else void finish(pin);
+            return;
+          }
+          await createVault(p, st);
+          toast('Respaldo restaurado.', 'success');
         }}
       />
-      <button type="button" className="link-btn" onClick={() => setStep('start')} disabled={busy}>
-        Atrás
+      <p className="pin-error" role="alert">
+        {busy ? 'Abriendo…' : (err ?? '')}
+      </p>
+      <button type="button" className="link-btn" onClick={() => setStep('welcome')}>
+        Volver
       </button>
     </main>
   );
