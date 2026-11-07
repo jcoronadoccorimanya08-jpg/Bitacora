@@ -55,8 +55,8 @@ describe('ahorro disponible y gran premio', () => {
     expect(grandStatus(st.settings, st, '2027-02-05')).toEqual({ kind: 'available', target: '2027-02-05', victories: 0, required: 0 });
     st.claims.grand = { claimedAt: 'x', price: 500 };
     expect(grandStatus(st.settings, st, '2027-02-06')).toEqual({ kind: 'claimed', claimedAt: 'x' });
-    const dated = initialState({ startDate: START, habits: H, grand: { name: 'G', date: '2026-12-22' } });
-    expect(grandStatus(dated.settings, dated, '2026-12-21')).toMatchObject({ kind: 'locked', daysLeft: 1 });
+    const dated = initialState({ startDate: START, habits: H, grand: { name: 'G', date: '2027-01-10' } });
+    expect(grandStatus(dated.settings, dated, '2027-01-09')).toMatchObject({ kind: 'locked', daysLeft: 1 });
     expect(grandStatus(initialState({ startDate: START, habits: H }).settings, { claims: {} }, START)).toEqual({ kind: 'none' });
   });
 });
