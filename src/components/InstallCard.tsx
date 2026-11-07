@@ -26,11 +26,12 @@ export function InstallCard({ appName, dismissible = false }: { appName: string;
 
   if (installedNow) {
     return (
-      <div className="banner" role="status">
+      <div className="banner" role="status" aria-label="App instalada">
         <Icon name="check" />
         <div className="txt">
-          <b>App instalada</b>
-          Ábrela desde el ícono «{appName}» de tu pantalla de inicio.
+          <b>Ya la tienes instalada</b>
+          Ábrela desde el ícono «{appName}». Si no está en tu pantalla de inicio, desliza hacia arriba para ver todas tus
+          aplicaciones y búscala ahí.
         </div>
       </div>
     );
@@ -46,6 +47,9 @@ export function InstallCard({ appName, dismissible = false }: { appName: string;
         ) : (
           <>
             En Chrome toca el menú <b>⋮</b> (arriba a la derecha) y elige <b>«Instalar aplicación»</b> o <b>«Agregar a la pantalla principal»</b>.
+            <span className="tip">
+              ¿No ves esa opción? Si abriste el link desde otra app (Claude, WhatsApp…), primero toca <b>⋮</b> → <b>«Abrir en Chrome»</b>.
+            </span>
           </>
         )}
       </div>

@@ -36,7 +36,11 @@ interface BeforeInstallPromptEvent extends Event {
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let installedNow = false;
+/** true si Chrome confirma que la app ya está instalada en el teléfono (aunque la abras en una pestaña). */
+let installedElsewhere = false;
 const installListeners = new Set<() => void>();
+
+type NavigatorWithRelatedApps = Navigator & { getInstalledRelatedApps?: () => Promise<unknown[]> };
 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => {
@@ -50,6 +54,18 @@ if (typeof window !== 'undefined') {
     installedNow = true;
     installListeners.forEach((l) => l());
   });
+  // Necesita "related_applications" en el manifest. En Samsung la app nueva a veces queda solo en
+  // el cajón de aplicaciones: así podemos decir "ya la tienes instalada" en vez de pedir instalarla otra vez.
+  const nav = navigator as NavigatorWithRelatedApps;
+  if (typeof nav.getInstalledRelatedApps === 'function') {
+    nav
+      .getInstalledRelatedApps()
+      .then((apps) => {
+        installedElsewhere = apps.length > 0;
+        if (installedElsewhere) installListeners.forEach((l) => l());
+      })
+      .catch(() => undefined);
+  }
 }
 
 /** Instalación en Android: botón propio cuando Chrome lo permite, y si ya se instaló. */
@@ -72,5 +88,10 @@ export function useInstallPrompt() {
     rerender((n) => n + 1);
     return choice.outcome === 'accepted';
   };
-  return { installed: standalone, canInstall: deferredPrompt !== null && !standalone, installedNow, install };
+  return {
+    installed: standalone,
+    canInstall: deferredPrompt !== null && !standalone && !installedElsewhere,
+    installedNow: installedNow || installedElsewhere,
+    install,
+  };
 }
