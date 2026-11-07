@@ -1,7 +1,7 @@
 /** Validación de datos descifrados, respaldos y archivos de configuración. */
 import { CYCLE_LENGTH, DEFAULT_TRIGGERS, MAX_HABITS, MAX_TRIGGERS, NEW_HABIT } from './config';
 import { isValidISODate } from './dates';
-import type { AppState, Chest, ChestOutcome, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Settings, Theme } from './types';
+import type { AppState, Chest, ChestOutcome, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings, Theme } from './types';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown, max: number): string | null => (typeof v === 'string' ? v.trim().slice(0, max) : null);
@@ -140,6 +140,7 @@ export function sanitizeState(raw: unknown): AppState | null {
       }
       if (rec.party === true) day.party = true;
       if (rec.wildcard === true) day.wildcard = true;
+      if (typeof rec.mood === 'number' && Number.isInteger(rec.mood) && rec.mood >= 1 && rec.mood <= 5) day.mood = rec.mood as Mood;
       const u = str(rec.updatedAt, 40);
       if (u) day.updatedAt = u;
       state.days[date] = day;

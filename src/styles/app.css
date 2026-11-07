@@ -60,6 +60,12 @@
   --gold: #ffc247;
   --gold-soft: rgba(255, 194, 71, 0.11);
   --gold-line: rgba(255, 194, 71, 0.45);
+  --tier-1: #d08a4c;
+  --tier-2: #c3ccd6;
+  --tier-3: #ffc247;
+  --tier-4: #7fe0d6;
+  --tier-5: #8ec5ff;
+  --tier-6: #c49bff;
   --flame: #ff7a3d;
   --flame-soft: rgba(255, 122, 61, 0.14);
   --danger: #ee6f5b;
@@ -101,6 +107,12 @@
     --gold: #9a6400;
     --gold-soft: rgba(186, 122, 0, 0.09);
     --gold-line: rgba(186, 122, 0, 0.4);
+    --tier-1: #9a5a22;
+    --tier-2: #5f6b79;
+    --tier-3: #9a6400;
+    --tier-4: #0f8a7e;
+    --tier-5: #2a6fd6;
+    --tier-6: #7b4dd6;
     --flame: #d4561f;
     --flame-soft: rgba(212, 86, 31, 0.1);
     --danger: #b8432f;
@@ -142,6 +154,12 @@
   --gold: #9a6400;
   --gold-soft: rgba(186, 122, 0, 0.09);
   --gold-line: rgba(186, 122, 0, 0.4);
+  --tier-1: #9a5a22;
+  --tier-2: #5f6b79;
+  --tier-3: #9a6400;
+  --tier-4: #0f8a7e;
+  --tier-5: #2a6fd6;
+  --tier-6: #7b4dd6;
   --flame: #d4561f;
   --flame-soft: rgba(212, 86, 31, 0.1);
   --danger: #b8432f;
@@ -2642,4 +2660,97 @@ dialog::backdrop {
 }
 .bar.gold > i {
   background: var(--gold);
+}
+
+/* ---------- Insignias y ánimo ---------- */
+.badges {
+  margin-top: 10px;
+}
+.medals {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-top: 12px;
+}
+.medal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--faint);
+}
+.medal-disc {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--line-strong);
+  background: var(--surface-2);
+}
+.medal-name {
+  font-size: 9.5px;
+  letter-spacing: -0.01em;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.medal.on {
+  color: var(--text);
+}
+.medal.on .medal-disc {
+  border-style: solid;
+  color: var(--bg);
+}
+.medal.tier-1 .medal-disc {
+  background: var(--tier-1);
+  border-color: var(--tier-1);
+}
+.medal.tier-2 .medal-disc {
+  background: var(--tier-2);
+  border-color: var(--tier-2);
+}
+.medal.tier-3 .medal-disc {
+  background: var(--tier-3);
+  border-color: var(--tier-3);
+}
+.medal.tier-4 .medal-disc {
+  background: var(--tier-4);
+  border-color: var(--tier-4);
+}
+.medal.tier-5 .medal-disc {
+  background: var(--tier-5);
+  border-color: var(--tier-5);
+}
+.medal.tier-6 .medal-disc {
+  background: var(--tier-6);
+  border-color: var(--tier-6);
+}
+.mood {
+  margin-top: 12px;
+}
+.mood-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.mood-btn {
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 26px;
+  line-height: 1;
+}
+.mood-btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.mood-btn:disabled {
+  opacity: 0.5;
 }

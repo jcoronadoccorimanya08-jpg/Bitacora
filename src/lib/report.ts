@@ -8,11 +8,13 @@ import {
   habitStats,
   lastDays,
   markOf,
+  moodStats,
   nextMilestone,
   savings,
   streakStats,
   triggerCounts,
 } from './engine';
+import { badgeBlocks, earnedTiers } from './badges';
 import { grandStatus, nextPrize, steps, wallet, withClaims } from './rewards';
 import type { AppState } from './types';
 
@@ -52,6 +54,10 @@ export function buildReport(state: AppState, today: ISODate, victories = 0): str
   if (s.habits.some((h) => h.value) || s.partyBonus > 0)
     lines.push(`Ahorro: ${savingsLine(state, today)}${sv.parties ? ` · ${sv.parties} ${sv.parties === 1 ? 'fiesta rechazada' : 'fiestas rechazadas'}` : ''} · disponible Bs ${w.balance}`);
   if (state.urges) lines.push(`Antojos superados con el botón de urgencia: ${state.urges}`);
+  const tiers = earnedTiers(badgeBlocks(s, state.days, today));
+  lines.push(`Insignias: ${tiers.length ? tiers.join(', ') : 'todavía ninguna'}`);
+  const moods = moodStats(s, state.days, week);
+  if (moods.length) lines.push(`Ánimo (7 días): ${moods.map((m) => `${m.mood}/5 → ${Math.round(m.avgPct)}% (${m.days} d)`).join(' · ')}`);
 
   if (week.length) {
     lines.push(`Últimos ${week.length} días: ${cleanDaysIn(state.days, week, s.habits)} días limpios`);

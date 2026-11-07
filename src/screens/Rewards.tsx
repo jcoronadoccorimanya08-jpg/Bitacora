@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { BadgesCard } from '../components/Badges';
 import { celebrate } from '../components/Confetti';
 import { Icon } from '../components/Icon';
 import { ConfirmDialog, ScreenHeader, SectionTitle } from '../components/ui';
 import { CHEST_LABEL } from '../lib/config';
 import { formatLong, formatShort, localDateOf, plural, type ISODate } from '../lib/dates';
+import { badgeBlocks, BADGE_PCT } from '../lib/badges';
 import { streakStats } from '../lib/engine';
 import { haptic, toast } from '../lib/feedback';
 import { grandStatus, pendingChests, steps, wallet, wildcards, withClaims, type Step } from '../lib/rewards';
@@ -83,6 +85,8 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
           <span className="muted">salen de los cofres</span>
         </div>
       </section>
+
+      <BadgesCard blocks={badgeBlocks(s, state.days, today)} rule={`Cada insignia se gana con ${BADGE_PCT} % limpio en 2 semanas.`} />
 
       {s.grand && g.kind !== 'none' && (
         <section className={`card special ${g.kind === 'available' ? 'ready' : ''}`} aria-label="Gran premio">

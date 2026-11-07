@@ -54,6 +54,9 @@ export interface Settings {
   lastBackupAt?: string;
 }
 
+/** Ánimo del día: 1 = muy mal … 5 = muy bien. */
+export type Mood = 1 | 2 | 3 | 4 | 5;
+
 export interface DayRecord {
   states: Record<string, Mark>;
   triggers: Record<string, string[]>;
@@ -61,6 +64,7 @@ export interface DayRecord {
   party?: boolean;
   /** Día salvado con un comodín: cuenta como limpio para la racha. */
   wildcard?: boolean;
+  mood?: Mood;
   updatedAt?: string;
 }
 

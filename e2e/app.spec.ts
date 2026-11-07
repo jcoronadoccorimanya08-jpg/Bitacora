@@ -68,6 +68,18 @@ test('configura con patrón, marca un día limpio, suma el ahorro y lo protege',
   expect(raw).not.toContain('Cigarro');
 });
 
+test('ánimo del día con un toque e insignias en Premios', async ({ page }) => {
+  await setupManual(page);
+  const mood = page.getByRole('group', { name: 'Tu ánimo' });
+  await mood.getByRole('button', { name: 'Bien', exact: true }).click();
+  await expect(mood.getByRole('button', { name: 'Bien', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await nav(page, 'Análisis');
+  await expect(page.getByRole('region', { name: 'Tu ánimo' })).toContainText('Bien');
+  await nav(page, 'Premios');
+  await expect(page.getByRole('region', { name: 'Insignias' })).toContainText('0 de 6');
+  await expect(page.getByRole('region', { name: 'Insignias' })).toContainText('Leyenda');
+});
+
 test('una caída muestra los disparadores y avisa sin juzgar', async ({ page }) => {
   await setupManual(page);
   const cig = page.getByRole('article', { name: 'Cigarro' });

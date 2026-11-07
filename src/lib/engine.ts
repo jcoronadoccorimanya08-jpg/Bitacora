@@ -250,3 +250,19 @@ export function weeklyPcts(s: Settings, days: Days, today: ISODate): Record<ISOD
   }
   return out;
 }
+
+export interface MoodStat {
+  mood: 1 | 2 | 3 | 4 | 5;
+  days: number;
+  avgPct: number;
+}
+
+/** Cuántos días marcaste cada ánimo y tu porcentaje limpio promedio esos días. */
+export function moodStats(s: Settings, days: Days, dates: ISODate[]): MoodStat[] {
+  const out: MoodStat[] = [];
+  for (const mood of [5, 4, 3, 2, 1] as const) {
+    const list = dates.filter((d) => days[d]?.mood === mood);
+    if (list.length) out.push({ mood, days: list.length, avgPct: list.reduce((a, d) => a + dayPct(days, d, s.habits), 0) / list.length });
+  }
+  return out;
+}

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import { MoodStatsCard } from '../components/MoodPicker';
 import { Mountain } from '../components/Mountain';
 import { ReportCard } from '../components/ReportCard';
 import { ScreenHeader, SectionTitle } from '../components/ui';
@@ -12,7 +13,9 @@ import {
   fallsByWeekday,
   habitStats,
   lastDays,
+  lastPlayableDay,
   markOf,
+  moodStats,
   savings,
   streakStats,
   triggerCounts,
@@ -157,6 +160,11 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
             </p>
           </>
         )}
+      </section>
+
+      <SectionTitle aside="tu % limpio promedio">Tu ánimo</SectionTitle>
+      <section className="card" aria-label="Tu ánimo">
+        <MoodStatsCard stats={moodStats(s, state.days, today < s.startDate ? [] : rangeDates(s.startDate, lastPlayableDay(s, today)))} unit="tus días limpios" />
       </section>
 
       <SectionTitle>Reporte de la semana</SectionTitle>

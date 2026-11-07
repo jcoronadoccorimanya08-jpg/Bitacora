@@ -3,6 +3,7 @@ import { celebrate } from '../components/Confetti';
 import { GoalCard } from '../components/GoalCard';
 import { Icon } from '../components/Icon';
 import { InstallCard } from '../components/InstallCard';
+import { MoodPicker } from '../components/MoodPicker';
 import { UrgeOverlay } from '../components/UrgeOverlay';
 import { SectionTitle } from '../components/ui';
 import { APP_NAME, STEP } from '../lib/config';
@@ -22,6 +23,7 @@ import {
 } from '../lib/engine';
 import { haptic, toast } from '../lib/feedback';
 import { formatHours } from '../lib/report';
+import { badgeBlocks, BADGE_PCT, earnedTiers } from '../lib/badges';
 import { steps, wildcards, withClaims } from '../lib/rewards';
 import { actions, biometricSupport, enableBiometric, getState, lock } from '../lib/store';
 import type { AppState, Habit, Mark, Settings } from '../lib/types';
@@ -62,12 +64,18 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
     const was = streakStats(s, before.days, today);
     const wasClean = isClean(before.days, selected, s.habits);
     const prevMark = markOf(before.days, selected, habitId);
+    const tiersBefore = earnedTiers(badgeBlocks(s, before.days, today)).length;
     actions.mark(selected, habitId, value);
     haptic(10);
     const after = getState();
     if (!after || prevMark === value) return;
     const now = streakStats(s, after.days, today);
-    if (now.best > was.best && now.best % STEP === 0) {
+    const tiers = earnedTiers(badgeBlocks(s, after.days, today));
+    if (tiers.length > tiersBefore) {
+      celebrate('week');
+      haptic([20, 60, 20, 60, 40]);
+      toast(`¡Insignia ${tiers[tiers.length - 1]}! ${BADGE_PCT} % limpio en 2 semanas.`, 'reward');
+    } else if (now.best > was.best && now.best % STEP === 0) {
       celebrate('week');
       haptic([20, 60, 20, 60, 40]);
       toast(`¡Escalón de ${now.best} días! Mira tu premio en Premios.`, 'reward');
@@ -276,6 +284,15 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
               </article>
             );
           })}
+
+          <MoodPicker
+            value={rec?.mood}
+            disabled={!editable}
+            onChange={(m) => {
+              actions.setMood(selected, m);
+              haptic(8);
+            }}
+          />
 
           <p className="fine">Marca cada noche antes de las 23:00. Una caída es información, no un fracaso: anota qué la disparó.</p>
           {sv.bs > 0 && <p className="fine">Lo que no gastas se vuelve premio: tu ahorro paga tus escalones.</p>}

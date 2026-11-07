@@ -22,7 +22,7 @@ import {
 import type { ISODate } from './dates';
 import { chestFromRoll } from './rewards';
 import { sanitizeState, slugId } from './sanitize';
-import type { AppState, Chest, GrandPrize, Habit, HabitValue, Mark, Milestone, Settings } from './types';
+import type { AppState, Chest, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings } from './types';
 import { deleteVault, readVault, removeLegacyVault, requestPersistence, writeVault, type LockRecord, type VaultRecord } from './vault';
 
 export type Phase = 'loading' | 'setup' | 'locked' | 'unlocked';
@@ -270,7 +270,7 @@ function update(fn: (s: AppState) => AppState) {
 function updateSettings(fn: (s: Settings) => Settings) {
   update((st) => ({ ...st, settings: fn(st.settings) }));
 }
-function dayOf(st: AppState, date: ISODate) {
+function dayOf(st: AppState, date: ISODate): DayRecord {
   return st.days[date] ?? { states: {}, triggers: {} };
 }
 
@@ -308,6 +308,15 @@ export const actions = {
       const next = { ...prev, updatedAt: new Date().toISOString() };
       if (prev.party) delete next.party;
       else next.party = true;
+      return { ...st, days: { ...st.days, [date]: next } };
+    });
+  },
+
+  setMood(date: ISODate, mood: Mood | null) {
+    update((st) => {
+      const next = { ...dayOf(st, date), updatedAt: new Date().toISOString() };
+      if (mood) next.mood = mood;
+      else delete next.mood;
       return { ...st, days: { ...st.days, [date]: next } };
     });
   },
