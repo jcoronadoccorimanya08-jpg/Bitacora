@@ -29,15 +29,35 @@ export interface ConfigData {
 
 export type ParsedFile = { kind: 'backup'; record: BackupRecord } | ({ kind: 'config' } & ConfigData);
 
+/**
+ * Lee el JSON de un archivo o de un texto pegado, tolerando lo que se cuela al copiar: caracteres invisibles,
+ * texto antes o después de las llaves y, si con eso no basta, espacios raros y comillas tipográficas.
+ * Si solo se pegó el nombre del archivo, lo dice con claridad.
+ */
+export function readLooseJSON(text: string, invalid: string): unknown {
+  const clean = text.replace(/[\u200b-\u200d\u2060\ufeff]/g, '').trim();
+  const a = clean.indexOf('{');
+  const b = clean.lastIndexOf('}');
+  if (a < 0 || b <= a) {
+    if (/\.(txt|json)\s*\.*$/i.test(clean) || /configuraci[oó]n|respaldo/i.test(clean)) throw new Error('Pegaste solo el nombre del archivo. Copia todo su texto (empieza con «{») o elige el archivo con el botón de cargar.');
+    throw new Error(invalid);
+  }
+  const body = clean.slice(a, b + 1);
+  const spaces = body.replace(/[\u00a0\u2007\u202f]/g, ' ');
+  // Primero tal cual; después con espacios normales; al final, también con comillas rectas.
+  for (const candidate of [body, spaces, spaces.replace(/[\u201c-\u201f\u2033]/g, '"')]) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      /* sigue con el siguiente intento */
+    }
+  }
+  throw new Error(invalid);
+}
+
 /** Reconoce un respaldo cifrado o una configuración. Lanza un Error claro si no sirve. */
 export function parseFile(text: string): ParsedFile {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text.trim());
-  } catch {
-    throw new Error('El texto no es válido.');
-  }
-  const o = raw as Record<string, unknown> | null;
+  const o = readLooseJSON(text, 'El texto no es válido.') as Record<string, unknown> | null;
   if (!o || o.app !== APP_ID) throw new Error('Este archivo no es de Bitácora.');
   if (o.kind === 'backup') {
     const v = o.vault as Partial<VaultRecord> | undefined;

@@ -131,3 +131,25 @@ describe('respaldos y configuración', () => {
     expect(sanitizeState({ ...base, schema: 1 })).toBeNull();
   });
 });
+
+describe('pegar sin dolores de cabeza', () => {
+  const config = { app: 'bitacora', kind: 'config', habits: [{ name: 'Hábito “con comillas”', phrase: 'Frase' }], triggers: ['Estrés'] };
+
+  it('si pegas solo el nombre del archivo, te lo dice', () => {
+    expect(() => parseFile('bitacora-configuracion-v2.txt ..')).toThrow('Pegaste solo el nombre del archivo');
+    expect(() => parseFile('no es json')).toThrow('El texto no es válido.');
+  });
+
+  it('acepta texto de más alrededor, caracteres invisibles y espacios raros', () => {
+    const pasted = `Mira esto:\n﻿${JSON.stringify(config, null, 2).replace(/ {2}/g, '  ')}\nlisto`;
+    const f = parseFile(pasted);
+    expect(f.kind).toBe('config');
+    if (f.kind === 'config') expect(f.habits[0]?.name).toBe('Hábito “con comillas”');
+  });
+
+  it('acepta comillas tipográficas cuando el texto se copió desde una nota', () => {
+    const smart = JSON.stringify({ app: 'bitacora', kind: 'config', habits: [{ name: 'Uno' }], triggers: [] }).replace(/"/g, (_, i: number) => (i % 2 ? '”' : '“'));
+    const f = parseFile(smart);
+    expect(f.kind === 'config' && f.habits[0]?.name).toBe('Uno');
+  });
+});

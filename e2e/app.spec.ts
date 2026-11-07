@@ -219,7 +219,13 @@ test('se puede pegar la configuración como texto', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Pegar mi configuración o un respaldo' }).click();
   const config = { app: 'bitacora', kind: 'config', habits: [{ name: 'Hábito pegado' }], triggers: ['Estrés'] };
-  await page.getByLabel('Configuración o respaldo en texto').fill(JSON.stringify(config, null, 2));
+  const box = page.getByLabel('Configuración o respaldo en texto');
+  // Si pegas solo el nombre del archivo, te lo dice claro.
+  await box.fill('bitacora-configuracion-v2.txt ..');
+  await page.getByRole('button', { name: 'Usar este texto' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Pegaste solo el nombre del archivo' })).toBeVisible();
+  // Con texto de más alrededor, igual funciona.
+  await box.fill(`Aquí va:\n${JSON.stringify(config, null, 2)}\nlisto`);
   await page.getByRole('button', { name: 'Usar este texto' }).click();
   await expect(page.getByText('1. Hábito pegado')).toBeVisible();
 });
