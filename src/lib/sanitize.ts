@@ -2,7 +2,7 @@
 import { CYCLE_LENGTH, DEFAULT_TRIGGERS, MAX_HABITS, MAX_TRIGGERS, NEW_HABIT } from './config';
 import { isValidISODate } from './dates';
 import { isAccent, isTextSize, isTheme } from './look';
-import type { AppState, Chest, ChestOutcome, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings, Theme } from './types';
+import type { AppState, Chest, ChestOutcome, CycleSummary, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings, Theme } from './types';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown, max: number): string | null => (typeof v === 'string' ? v.trim().slice(0, max) : null);
@@ -124,6 +124,29 @@ function sanitizeSettings(v: unknown): Settings | null {
 
 const OUTCOMES: ChestOutcome[] = ['bs20', 'bs50', 'wildcard', 'series'];
 
+function history(v: unknown): CycleSummary[] {
+  if (!Array.isArray(v)) return [];
+  const out: CycleSummary[] = [];
+  for (const c of v) {
+    if (!isObj(c) || !isValidISODate(c.start) || !isValidISODate(c.end)) continue;
+    const n = (x: unknown, max: number) => Math.round(num(x, 0, max, 0) * 10) / 10;
+    out.push({
+      start: c.start,
+      end: c.end,
+      days: n(c.days, 400),
+      cleanDays: n(c.cleanDays, 400),
+      bestStreak: n(c.bestStreak, 400),
+      savedBs: n(c.savedBs, 10_000_000),
+      horas: n(c.horas, 100_000),
+      badges: n(c.badges, 20),
+      prizes: n(c.prizes, 100),
+      urges: n(c.urges, 100_000),
+      archivedAt: str(c.archivedAt, 40) ?? '',
+    });
+  }
+  return out.slice(-50);
+}
+
 export function sanitizeState(raw: unknown): AppState | null {
   if (!isObj(raw) || raw.schema !== 2) return null;
   const settings = sanitizeSettings(raw.settings);
@@ -162,5 +185,7 @@ export function sanitizeState(raw: unknown): AppState | null {
       state.chests[k] = chest;
     }
   }
+  const past = history(raw.history);
+  if (past.length) state.history = past;
   return state;
 }

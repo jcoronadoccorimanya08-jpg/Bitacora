@@ -80,6 +80,21 @@ export interface Chest {
   openedAt: string;
 }
 
+/** Resumen de un ciclo terminado (se guarda al empezar uno nuevo). */
+export interface CycleSummary {
+  start: ISODate;
+  end: ISODate;
+  days: number;
+  cleanDays: number;
+  bestStreak: number;
+  savedBs: number;
+  horas: number;
+  badges: number;
+  prizes: number;
+  urges: number;
+  archivedAt: string;
+}
+
 export interface AppState {
   schema: 2;
   settings: Settings;
@@ -90,4 +105,6 @@ export interface AppState {
   chests: Record<string, Chest>;
   /** Antojos superados con el botón de urgencia. */
   urges: number;
+  /** Opcional: ciclos anteriores (los estados guardados antes no lo tienen). */
+  history?: CycleSummary[];
 }

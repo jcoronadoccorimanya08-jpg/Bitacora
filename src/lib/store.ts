@@ -19,7 +19,8 @@ import {
   randomBytes,
   toB64,
 } from './crypto';
-import type { ISODate } from './dates';
+import { todayISO, type ISODate } from './dates';
+import { summarizeCycle } from './history';
 import { chestFromRoll } from './rewards';
 import { sanitizeState, slugId } from './sanitize';
 import type { Accent, AppState, Chest, DayRecord, GrandPrize, Habit, HabitValue, Mark, Milestone, Mood, Settings, TextSize } from './types';
@@ -270,6 +271,12 @@ function update(fn: (s: AppState) => AppState) {
 function updateSettings(fn: (s: Settings) => Settings) {
   update((st) => ({ ...st, settings: fn(st.settings) }));
 }
+/** Guarda el resumen del ciclo que termina en el historial. */
+function archive(st: AppState): AppState {
+  const sum = summarizeCycle(st, todayISO());
+  return sum ? { ...st, history: [...(st.history ?? []), sum] } : st;
+}
+
 function dayOf(st: AppState, date: ISODate): DayRecord {
   return st.days[date] ?? { states: {}, triggers: {} };
 }
@@ -358,7 +365,7 @@ export const actions = {
   },
 
   restartCycle(startDate: ISODate) {
-    update((st) => ({ ...st, settings: { ...st.settings, startDate }, claims: {}, chests: {} }));
+    update((st) => ({ ...archive(st), settings: { ...st.settings, startDate }, claims: {}, chests: {} }));
   },
 
   setTheme(theme: Settings['theme']) {

@@ -20,6 +20,7 @@ Es independiente de cualquier otra app: no compartas código en tiempo de ejecuc
 - Gran premio (`settings.grand`): se reclama desde su fecha o desde el último día del ciclo y, si tiene `weeks`, con esas semanas victoriosas (`src/lib/team.ts`: promedio de Bitácora y Val Q de 80 % o más).
 - **Insignias** (`src/lib/badges.ts`): cada bloque de 2 semanas con 80 % limpio de promedio sube un nivel (Bronce, Plata, Oro, Platino, Diamante, Leyenda). Un bloque perdido no quita nada.
 - **Ánimo del día** (`DayRecord.mood`, 1 a 5): un toque en Hoy; en Análisis se ve tu porcentaje limpio según tu ánimo.
+- **Historial** (`history`, `src/lib/history.ts`): al empezar un ciclo nuevo se guarda un resumen del que termina; se ve en Análisis → Ciclos anteriores.
 - Sin botones de borrar datos (pedido de la persona); la única salida es «¿Olvidaste tu patrón?».
 - Fechas siempre en `America/La_Paz` (`src/lib/dates.ts`).
 - Marcar un día completo debe tomar menos de 30 segundos; los botones miden 48 px o más.

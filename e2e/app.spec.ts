@@ -339,6 +339,16 @@ test('apariencia: negro puro, color y letra grande, también en el bloqueo', asy
   await expect(html).toHaveAttribute('data-size', 'grande');
 });
 
+test('historial: al empezar un ciclo nuevo queda el resumen del anterior', async ({ page }) => {
+  await setupManual(page);
+  await markClean(page);
+  await nav(page, 'Ajustes');
+  await page.getByRole('button', { name: 'Nuevo', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Empezar' }).click();
+  await nav(page, 'Análisis');
+  await expect(page.getByLabel('Ciclos anteriores')).toContainText('1 de 1 días limpios');
+});
+
 test('la bienvenida funciona sin internet y explica cómo instalar', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('region', { name: 'Instalar la app' })).toContainText('«Instalar aplicación»');

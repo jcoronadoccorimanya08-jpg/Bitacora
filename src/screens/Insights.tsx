@@ -208,6 +208,25 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
           ))}
         </div>
       </section>
+
+      {state.history && state.history.length > 0 && (
+        <>
+          <SectionTitle aside={`${state.history.length}`}>Ciclos anteriores</SectionTitle>
+          <div className="group" aria-label="Ciclos anteriores">
+            {[...state.history].reverse().map((c) => (
+              <div key={c.archivedAt + c.start} className="item">
+                <div className="txt">
+                  <b>{formatRange(c.start, c.end)}</b>
+                  <span>
+                    {c.cleanDays} de {c.days} días limpios · mejor racha {c.bestStreak} · Bs {c.savedBs} · {formatHours(c.horas)} · {c.badges}{' '}
+                    {c.badges === 1 ? 'insignia' : 'insignias'} · {c.prizes} {c.prizes === 1 ? 'premio' : 'premios'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
 }

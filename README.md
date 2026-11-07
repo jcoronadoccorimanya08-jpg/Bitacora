@@ -23,6 +23,7 @@ Funciona sin internet, se instala en el celular y guarda todo **cifrado** en el 
 - **Semana victoriosa con Val Q:** si el promedio de las dos apps en la semana llega a 80 %, la semana es victoriosa. El gran premio puede pedir semanas victoriosas (`"weeks": 9` en la configuración). Las dos apps se pasan solo esos porcentajes, nunca tus hábitos.
 - **Insignias cada 2 semanas:** Bronce, Plata, Oro, Platino, Diamante y Leyenda. Cada bloque de 2 semanas con 80 % limpio de promedio sube un nivel.
 - **Ánimo del día:** un toque en Hoy; en Análisis ves cómo se relaciona con tus días limpios.
+- **Historial de ciclos:** al empezar un ciclo nuevo, el resumen del anterior queda en Análisis.
 - **Botón de urgencia:** cuando llega el antojo, muestra tu gran premio, tu frase y tu ahorro, y te acompaña 10 minutos respirando.
 - **Análisis:** tu montaña (promedio de 7 días), semanas, lo que ganaste por hábito, historial, disparadores y caídas por día.
 - **Apariencia:** tema automático, oscuro, **negro puro** o claro; cuatro colores y letra grande (Ajustes → Apariencia).

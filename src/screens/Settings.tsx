@@ -426,7 +426,7 @@ function confirmContent(p: Pending): { title: string; body: ReactNode; confirmLa
     case 'restart':
       return {
         title: 'Empezar un ciclo nuevo',
-        body: `El nuevo ciclo empezaría hoy, ${formatLong(p.date)}. La racha, los premios y los cofres se reinician; tus hábitos y tu historial se conservan. Haz un respaldo antes si quieres guardar este ciclo.`,
+        body: `El nuevo ciclo empezaría hoy, ${formatLong(p.date)}. La racha, los premios y los cofres se reinician; tus hábitos y tu historial se conservan, y el resumen de este ciclo queda en Análisis → Ciclos anteriores. Haz un respaldo antes si quieres guardar este ciclo.`,
         confirmLabel: 'Empezar',
       };
     case 'restore':

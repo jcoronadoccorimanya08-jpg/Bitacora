@@ -78,3 +78,19 @@ describe('apariencia', () => {
     expect(odd?.settings.textSize).toBeUndefined();
   });
 });
+
+describe('historial de ciclos', () => {
+  it('guarda un resumen del ciclo al empezar uno nuevo', async () => {
+    const { summarizeCycle } = await import('../src/lib/history');
+    const s0 = initialState({ startDate: START, habits: [{ ...H[0]!, value: { kind: 'bs', amount: 10 } }, H[1]!] });
+    clean(s0.days, rangeDates('2026-11-08', '2026-11-14'));
+    s0.urges = 2;
+    s0.claims['7'] = { claimedAt: '', price: 50 };
+    const sum = summarizeCycle(s0, '2026-11-15');
+    expect(sum).toMatchObject({ start: '2026-11-08', end: '2026-11-15', days: 7, cleanDays: 7, bestStreak: 7, savedBs: 70, badges: 0, prizes: 1, urges: 2 });
+    expect(summarizeCycle(s0, '2026-11-01')).toBeNull();
+    const back = sanitizeState({ ...s0, history: [sum, { start: 'x' }] });
+    expect(back?.history).toHaveLength(1);
+    expect(sanitizeState(s0)?.history).toBeUndefined();
+  });
+});
