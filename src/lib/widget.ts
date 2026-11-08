@@ -4,8 +4,9 @@
  * sin nombres de hábitos ni premios (el widget de Bitácora es discreto). Si no hay app nativa, no pasa nada.
  */
 import { addDays, maxDate, minDate, rangeDates, type ISODate } from './dates';
-import { cycleEnd, cyclePhase, dayNumber, dayPct, isClean, lastPlayableDay, streakStats } from './engine';
-import type { AppState } from './types';
+import { cycleEnd, cyclePhase, dayNumber, dayPct, isClean, lastPlayableDay, nextMilestone, savings, streakStats } from './engine';
+import { steps } from './rewards';
+import type { Accent, AppState } from './types';
 
 export interface WidgetDay {
   d: ISODate;
@@ -27,6 +28,14 @@ export interface WidgetPayload {
   todayWon: boolean;
   /** Últimos 14 días del ciclo (hasta hoy). */
   days: WidgetDay[];
+  /** Ahorro (Bs) y horas recuperadas, sin decir de qué. */
+  savedBs: number;
+  horas: number;
+  /** Días de racha que faltan para el próximo escalón, y si es premio o cofre (sin el nombre). */
+  nextStep: number | null;
+  nextKind: 'premio' | 'cofre' | null;
+  /** Color elegido en Ajustes → Apariencia. */
+  accent: Accent;
 }
 
 export function buildWidgetPayload(state: AppState, today: ISODate): WidgetPayload {
@@ -49,6 +58,21 @@ export function buildWidgetPayload(state: AppState, today: ISODate): WidgetPaylo
     todayPct: phase === 'active' ? Math.round(dayPct(state.days, today, s.habits)) : 0,
     todayWon: phase === 'active' && isClean(state.days, today, s.habits),
     days,
+    ...nextAndSavings(state, today, st.run, st.best),
+    accent: s.accent ?? 'verde',
+  };
+}
+
+function nextAndSavings(state: AppState, today: ISODate, run: number, best: number) {
+  const s = state.settings;
+  const sv = savings(s, state.days, today);
+  const next = nextMilestone(run, s.cycleLength);
+  const step = next ? steps(s, best).find((x) => x.day === next) : undefined;
+  return {
+    savedBs: sv.bs,
+    horas: sv.horas,
+    nextStep: next === null ? null : next - run,
+    nextKind: step ? (step.kind === 'prize' ? ('premio' as const) : ('cofre' as const)) : null,
   };
 }
 

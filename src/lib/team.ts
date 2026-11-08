@@ -13,6 +13,17 @@ export const SELF_KEY = 'bitacora.semanas';
 export const OTHER_KEY = 'val-quirurgico.semanas';
 export const OTHER_NAME = 'Val Q';
 
+let testing = false;
+
+/** En modo prueba las semanas se guardan aparte («.prueba»), para no mezclarlas con las reales. */
+export function setTeamTest(on: boolean): void {
+  testing = on;
+}
+
+function keyFor(key: string): string {
+  return testing ? `${key}.prueba` : key;
+}
+
 export interface WeekShare {
   v: 1;
   /** Inicio del ciclo de la app que publica. */
@@ -44,7 +55,7 @@ export function parseShare(raw: string | null): WeekShare | null {
 /** Lo que publicó la otra app (o null si todavía no la abriste en este teléfono). */
 export function readShare(key = OTHER_KEY): WeekShare | null {
   try {
-    return parseShare(localStorage.getItem(key));
+    return parseShare(localStorage.getItem(keyFor(key)));
   } catch {
     return null;
   }
@@ -53,7 +64,7 @@ export function readShare(key = OTHER_KEY): WeekShare | null {
 /** Publica tus porcentajes semanales. Solo escribe si algo cambió. */
 export function writeShare(share: Omit<WeekShare, 'v' | 'at'>): void {
   try {
-    const prev = parseShare(localStorage.getItem(SELF_KEY));
+    const prev = parseShare(localStorage.getItem(keyFor(SELF_KEY)));
     const same =
       prev &&
       prev.start === share.start &&
@@ -62,7 +73,7 @@ export function writeShare(share: Omit<WeekShare, 'v' | 'at'>): void {
     if (same) return;
     const rec: WeekShare = { v: 1, ...share, at: new Date().toISOString() };
     if (!rec.grandClaimed) delete rec.grandClaimed;
-    localStorage.setItem(SELF_KEY, JSON.stringify(rec));
+    localStorage.setItem(keyFor(SELF_KEY), JSON.stringify(rec));
   } catch {
     /* sin almacenamiento: la semana victoriosa se calcula cuando vuelva a haber */
   }

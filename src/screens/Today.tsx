@@ -23,6 +23,7 @@ import {
   streakStats,
 } from '../lib/engine';
 import { haptic, toast } from '../lib/feedback';
+import { takeUrgeRequest } from '../lib/launch';
 import { formatHours } from '../lib/report';
 import { badgeBlocks, BADGE_PCT, earnedTiers } from '../lib/badges';
 import { steps, wildcards, withClaims } from '../lib/rewards';
@@ -57,6 +58,10 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
   const wild = wildcards(state);
   const sv = savings(s, state.days, today);
   const [urge, setUrge] = useState(false);
+  // Si la app se abrió desde el botón «Tengo un antojo» del widget, abre la urgencia.
+  useEffect(() => {
+    if (takeUrgeRequest()) setUrge(true);
+  }, []);
   const [help, setHelp] = useState(false);
 
   const onMark = (habitId: string, value: Mark) => {

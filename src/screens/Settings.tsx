@@ -14,6 +14,9 @@ import { ACCENTS, THEMES } from '../lib/look';
 import {
   actions,
   biometricSupport,
+  enterTest,
+  exitTest,
+  useStore,
   changePattern,
   currentBackup,
   disableBiometric,
@@ -37,6 +40,7 @@ type Overlay = { kind: 'pattern' } | { kind: 'backup'; record: Pick<VaultRecord,
 
 export function SettingsScreen({ state, today, hasBio }: { state: AppState; today: ISODate; hasBio: boolean }) {
   const s = state.settings;
+  const { test } = useStore();
   const [pending, setPending] = useState<Pending>(null);
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [paste, setPaste] = useState<string | null>(null);
@@ -290,61 +294,96 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
         </div>
       </div>
 
-      <SectionTitle>Respaldo</SectionTitle>
+      <SectionTitle>Modo prueba</SectionTitle>
       <div className="group">
-        <div className="item col">
-          <div className="txt">
-            <b>Copia de seguridad cifrada</b>
-            <span>{lastBackupText} Se abre solo con tu patrón. Guárdala en Drive por si cambias de teléfono.</span>
-          </div>
-          <div className="stack" style={{ marginTop: 10 }}>
-            {shareFiles && (
-              <button type="button" className="btn primary block" onClick={() => void doBackup('share')}>
-                <Icon name="share" size={18} /> Guardar en Drive o compartir
-              </button>
-            )}
-            <button type="button" className={`btn block ${shareFiles ? '' : 'primary'}`} onClick={() => void doBackup('download')}>
-              <Icon name="download" size={18} /> Guardar en el celular
+        <Item
+          title={test ? 'Estás en modo prueba' : 'Probar con fechas simuladas'}
+          note={
+            test
+              ? 'Usa ‹ y › arriba para mover la fecha. Lo que marques no se guarda; al salir vuelven tus datos reales.'
+              : 'Usa una copia de tus datos y mueve la fecha día a día para ver tu racha, insignias y widgets. Nada se guarda.'
+          }
+        >
+          {test ? (
+            <button type="button" className="btn sm" onClick={exitTest}>
+              Salir
             </button>
-            <button type="button" className="btn block" onClick={() => void doBackup('copy')}>
-              <Icon name="copy" size={18} /> Copiar respaldo
+          ) : (
+            <button
+              type="button"
+              className="btn primary sm"
+              onClick={() => {
+                enterTest(today);
+                toast('Modo prueba: mueve la fecha con ‹ y › arriba.', 'success');
+              }}
+            >
+              Probar
             </button>
-            <button type="button" className="btn ghost block" onClick={() => fileRef.current?.click()}>
-              <Icon name="upload" size={18} /> Restaurar o cargar configuración
-            </button>
-            <button type="button" className="btn ghost block" onClick={() => setPaste(paste === null ? '' : null)}>
-              Pegar un respaldo o una configuración
-            </button>
-            {paste !== null && (
-              <div className="paste-box">
-                <textarea
-                  value={paste}
-                  onChange={(e) => setPaste(e.target.value)}
-                  placeholder="Pega aquí el texto"
-                  aria-label="Texto del respaldo o de la configuración"
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                />
-                <button type="button" className="btn primary block" disabled={!paste.trim()} onClick={() => readText(paste)}>
-                  Usar este texto
-                </button>
-              </div>
-            )}
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="text/plain,.txt,application/json,.json"
-            hidden
-            onChange={async (e) => {
-              const f = e.target.files?.[0];
-              if (f) readText(await f.text());
-              e.target.value = '';
-            }}
-          />
-        </div>
+          )}
+        </Item>
       </div>
+
+      <SectionTitle>Respaldo</SectionTitle>
+      {test ? (
+        <div className="group">
+          <Item title="Respaldo" note="No disponible en modo prueba. Sal del modo prueba para respaldar o restaurar tus datos reales." />
+        </div>
+      ) : (
+        <div className="group">
+          <div className="item col">
+            <div className="txt">
+              <b>Copia de seguridad cifrada</b>
+              <span>{lastBackupText} Se abre solo con tu patrón. Guárdala en Drive por si cambias de teléfono.</span>
+            </div>
+            <div className="stack" style={{ marginTop: 10 }}>
+              {shareFiles && (
+                <button type="button" className="btn primary block" onClick={() => void doBackup('share')}>
+                  <Icon name="share" size={18} /> Guardar en Drive o compartir
+                </button>
+              )}
+              <button type="button" className={`btn block ${shareFiles ? '' : 'primary'}`} onClick={() => void doBackup('download')}>
+                <Icon name="download" size={18} /> Guardar en el celular
+              </button>
+              <button type="button" className="btn block" onClick={() => void doBackup('copy')}>
+                <Icon name="copy" size={18} /> Copiar respaldo
+              </button>
+              <button type="button" className="btn ghost block" onClick={() => fileRef.current?.click()}>
+                <Icon name="upload" size={18} /> Restaurar o cargar configuración
+              </button>
+              <button type="button" className="btn ghost block" onClick={() => setPaste(paste === null ? '' : null)}>
+                Pegar un respaldo o una configuración
+              </button>
+              {paste !== null && (
+                <div className="paste-box">
+                  <textarea
+                    value={paste}
+                    onChange={(e) => setPaste(e.target.value)}
+                    placeholder="Pega aquí el texto"
+                    aria-label="Texto del respaldo o de la configuración"
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                  />
+                  <button type="button" className="btn primary block" disabled={!paste.trim()} onClick={() => readText(paste)}>
+                    Usar este texto
+                  </button>
+                </div>
+              )}
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="text/plain,.txt,application/json,.json"
+              hidden
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (f) readText(await f.text());
+                e.target.value = '';
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <SectionTitle>App</SectionTitle>
       <div className="group">

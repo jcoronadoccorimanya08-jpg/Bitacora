@@ -349,6 +349,32 @@ test('historial: al empezar un ciclo nuevo queda el resumen del anterior', async
   await expect(page.getByLabel('Ciclos anteriores')).toContainText('1 de 1 días limpios');
 });
 
+test('modo prueba: mueve la fecha y no toca tus datos reales', async ({ page }) => {
+  await setupManual(page);
+  await nav(page, 'Ajustes');
+  await page.getByRole('button', { name: 'Probar', exact: true }).click();
+  const bar = page.getByRole('region', { name: 'Modo prueba' });
+  await expect(bar).toContainText('sábado 7 de noviembre');
+  await bar.getByRole('button', { name: 'Día siguiente en la prueba' }).click();
+  await expect(bar).toContainText('domingo 8 de noviembre');
+  await nav(page, 'Hoy');
+  await expect(page.getByRole('heading', { name: 'Día 2 de 90' })).toBeVisible();
+  await markClean(page);
+  await expect(page.getByLabel('Racha').locator('.big')).toHaveText('1');
+  await bar.getByRole('button', { name: 'Salir' }).click();
+  await expect(page.getByRole('heading', { name: 'Día 1 de 90' })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Cigarro' }).getByRole('button', { name: 'Limpio' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByLabel('Racha').locator('.big')).toHaveText('0');
+});
+
+test('el botón «Tengo un antojo» del widget abre la urgencia', async ({ page }) => {
+  await setupManual(page);
+  await page.goto('./?urgencia=1');
+  await draw(page, PATTERN);
+  await expect(page.getByRole('dialog', { name: 'Botón de urgencia' })).toBeVisible();
+  expect(page.url()).not.toContain('urgencia');
+});
+
 test('la bienvenida funciona sin internet y explica cómo instalar', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('region', { name: 'Instalar la app' })).toContainText('«Instalar aplicación»');

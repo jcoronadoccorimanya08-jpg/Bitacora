@@ -33,3 +33,14 @@ describe('resumen para el widget (discreto)', () => {
     for (const word of ['privado', 'privada', 'Otro', 'Estrés']) expect(text).not.toContain(word);
   });
 });
+
+describe('widget v2 (discreto)', () => {
+  it('ahorro, próximo escalón sin nombre y color', () => {
+    const habits: Habit[] = [{ ...H[0]!, value: { kind: 'bs', amount: 10 } }, { ...H[1]!, value: { kind: 'horas', amount: 1 } }];
+    const st = initialState({ startDate: START, habits, milestones: [{ day: 7, name: 'Premio privado', price: 50 }] });
+    for (const d of rangeDates('2026-11-09', '2026-11-11')) st.days[d] = { states: { a: 'ok', b: 'ok' }, triggers: {} };
+    const p = buildWidgetPayload(st, '2026-11-11');
+    expect(p).toMatchObject({ savedBs: 30, horas: 3, nextStep: 4, nextKind: 'premio', accent: 'verde' });
+    expect(JSON.stringify(p)).not.toContain('privado');
+  });
+});

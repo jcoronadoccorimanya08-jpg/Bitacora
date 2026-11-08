@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ConfettiHost } from './components/Confetti';
+import { TestBar } from './components/TestBar';
 import { BottomNav, ToastHost, type Tab } from './components/ui';
 import { UpdateBanner, useServiceWorker } from './components/UpdateBanner';
 import { canShareFiles, downloadBackupText, serializeBackup, shareBackupText } from './lib/backup';
@@ -9,7 +10,7 @@ import { useMediaQuery, useToday } from './lib/hooks';
 import { applyLook, readLook, type Look } from './lib/look';
 import { claimable, grandStatus, pendingChests, steps, withClaims } from './lib/rewards';
 import { actions, currentBackup, getState, lock, onSaveError, useStore } from './lib/store';
-import { teamFor, writeShare } from './lib/team';
+import { setTeamTest, teamFor, writeShare } from './lib/team';
 import { buildWidgetPayload, initWidgetBridge, sendWidget } from './lib/widget';
 import type { ISODate } from './lib/dates';
 import { InsightsScreen } from './screens/Insights';
@@ -29,8 +30,11 @@ function useLook(look: Look) {
 
 export function App() {
   const sw = useServiceWorker();
-  const { phase, state, hasBio } = useStore();
-  const today = useToday();
+  const { phase, state, hasBio, test } = useStore();
+  const realToday = useToday();
+  // En modo prueba, «hoy» es la fecha simulada.
+  const today = test?.date ?? realToday;
+  setTeamTest(Boolean(test));
   const [tab, setTab] = useState<Tab>('hoy');
   const [selected, setSelected] = useState<ISODate>(today);
   const [curtain, setCurtain] = useState(false);
@@ -126,6 +130,7 @@ export function App() {
   return (
     <>
       <div className="app">
+        {test && <TestBar date={test.date} />}
         {updateBanner}
         {tab === 'hoy' && (
           <TodayScreen

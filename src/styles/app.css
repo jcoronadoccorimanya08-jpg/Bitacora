@@ -2846,3 +2846,35 @@ dialog::backdrop {
 .help li + li {
   margin-top: 6px;
 }
+
+/* ---------- Modo prueba ---------- */
+.test-bar {
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + 6px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gold-line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.test-bar .test-txt {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.test-bar .test-txt b {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.test-bar .test-txt span {
+  font-size: 14px;
+  font-weight: 650;
+}
