@@ -1,10 +1,14 @@
 /**
  * Puente con el widget de Android (app «Rachas»). Solo funciona cuando Bitácora se abre desde esa app:
- * la app nativa abre un canal (postMessage con un MessagePort) y aquí le mandamos un resumen de SOLO números,
- * sin nombres de hábitos ni premios (el widget de Bitácora es discreto). Si no hay app nativa, no pasa nada.
+ * Chrome le entrega a la página un canal (postMessage con un MessagePort) y por ahí le mandamos un resumen
+ * de SOLO números, sin nombres de hábitos ni premios (el widget de Bitácora es discreto). Si no hay app nativa,
+ * no pasa nada.
  */
+import { useSyncExternalStore } from 'react';
+import { badgeBlocks, earnedTiers } from './badges';
+import { STEP } from './config';
 import { addDays, maxDate, minDate, rangeDates, type ISODate } from './dates';
-import { cycleEnd, cyclePhase, dayNumber, dayPct, isClean, lastPlayableDay, nextMilestone, savings, streakStats } from './engine';
+import { cycleEnd, cyclePhase, cycleWeeks, dayNumber, dayPct, isClean, lastPlayableDay, markOf, nextMilestone, savings, streakStats } from './engine';
 import { steps } from './rewards';
 import type { Accent, AppState } from './types';
 
@@ -16,79 +20,160 @@ export interface WidgetDay {
   w: boolean;
 }
 
-export interface WidgetPayload {
-  v: 1;
-  app: 'bitacora';
+/** Lo que muestra el widget en un día (solo números). */
+export interface WidgetFrame {
   today: ISODate;
   dayNumber: number;
   cycleLength: number;
+  /** Inicio del ciclo. */
+  start: ISODate;
   streak: number;
   best: number;
   todayPct: number;
   todayWon: boolean;
+  /** Ya marcaste todos tus hábitos hoy (o usaste un comodín). */
+  todayDone: boolean;
   /** Últimos 14 días del ciclo (hasta hoy). */
   days: WidgetDay[];
+  /** La semana del ciclo en la que estás: número, inicio, días y días limpios. */
+  week: { n: number; start: ISODate; len: number; won: number } | null;
   /** Ahorro (Bs) y horas recuperadas, sin decir de qué. */
   savedBs: number;
   horas: number;
   /** Días de racha que faltan para el próximo escalón, y si es premio o cofre (sin el nombre). */
   nextStep: number | null;
   nextKind: 'premio' | 'cofre' | null;
-  /** Color elegido en Ajustes → Apariencia. */
-  accent: Accent;
+  /** Cada cuántos días de racha hay un escalón. */
+  step: number;
+  /** Insignias ganadas en el ciclo (1 = Bronce … 6 = Leyenda). */
+  badges: number;
 }
 
-export function buildWidgetPayload(state: AppState, today: ISODate): WidgetPayload {
+export interface WidgetPayload extends WidgetFrame {
+  v: 1;
+  app: 'bitacora';
+  /** Color elegido en Ajustes → Apariencia. */
+  accent: Accent;
+  /** Modo prueba: el widget lo muestra tal cual, marcado como prueba. */
+  test?: true;
+  /** Mañana y pasado mañana tal como se verían sin abrir la app: así el widget cambia de día solo. */
+  ahead: WidgetFrame[];
+}
+
+export function buildWidgetFrame(state: AppState, today: ISODate): WidgetFrame {
   const s = state.settings;
   const phase = cyclePhase(s, today);
+  const active = phase === 'active';
   const ref = lastPlayableDay(s, today);
   const st = streakStats(s, state.days, today);
   const days =
     phase === 'before'
       ? []
       : rangeDates(maxDate(s.startDate, addDays(ref, -13)), minDate(ref, cycleEnd(s))).map((d) => ({ d, p: Math.round(dayPct(state.days, d, s.habits)), w: isClean(state.days, d, s.habits) }));
+  const weeks = cycleWeeks(s);
+  const wk = phase === 'before' ? weeks[0] : weeks.find((w) => ref >= w.start && ref <= w.end);
+  const sv = savings(s, state.days, today);
+  const next = nextMilestone(st.run, s.cycleLength);
+  const stepInfo = next ? steps(s, st.best).find((x) => x.day === next) : undefined;
   return {
-    v: 1,
-    app: 'bitacora',
     today,
     dayNumber: phase === 'before' ? 0 : Math.min(s.cycleLength, dayNumber(s.startDate, today)),
     cycleLength: s.cycleLength,
+    start: s.startDate,
     streak: st.run,
     best: st.best,
-    todayPct: phase === 'active' ? Math.round(dayPct(state.days, today, s.habits)) : 0,
-    todayWon: phase === 'active' && isClean(state.days, today, s.habits),
+    todayPct: active ? Math.round(dayPct(state.days, today, s.habits)) : 0,
+    todayWon: active && isClean(state.days, today, s.habits),
+    todayDone: active && (Boolean(state.days[today]?.wildcard) || s.habits.every((h) => markOf(state.days, today, h.id) !== undefined)),
     days,
-    ...nextAndSavings(state, today, st.run, st.best),
-    accent: s.accent ?? 'verde',
-  };
-}
-
-function nextAndSavings(state: AppState, today: ISODate, run: number, best: number) {
-  const s = state.settings;
-  const sv = savings(s, state.days, today);
-  const next = nextMilestone(run, s.cycleLength);
-  const step = next ? steps(s, best).find((x) => x.day === next) : undefined;
-  return {
+    week: wk
+      ? {
+          n: wk.index,
+          start: wk.start,
+          len: rangeDates(wk.start, wk.end).length,
+          won: today < wk.start ? 0 : rangeDates(wk.start, minDate(ref, wk.end)).filter((d) => isClean(state.days, d, s.habits)).length,
+        }
+      : null,
     savedBs: sv.bs,
     horas: sv.horas,
-    nextStep: next === null ? null : next - run,
-    nextKind: step ? (step.kind === 'prize' ? ('premio' as const) : ('cofre' as const)) : null,
+    nextStep: next === null ? null : next - st.run,
+    nextKind: stepInfo ? (stepInfo.kind === 'prize' ? 'premio' : 'cofre') : null,
+    step: STEP,
+    badges: earnedTiers(badgeBlocks(s, state.days, today)).length,
   };
 }
 
-/** Paquete de la app nativa «Rachas» (por si Chrome identifica el canal con el origen de la app). */
-const APP_ORIGIN = 'android-app://io.github.jcoronadoccorimanya08.rachas';
+/** Cuántos días adelantados se mandan (por si no abres la app): mañana y pasado mañana. */
+export const AHEAD_DAYS = 2;
+
+export function buildWidgetPayload(state: AppState, today: ISODate, opts: { test?: boolean } = {}): WidgetPayload {
+  const payload: WidgetPayload = {
+    v: 1,
+    app: 'bitacora',
+    ...buildWidgetFrame(state, today),
+    accent: state.settings.accent ?? 'verde',
+    // En modo prueba la fecha es simulada: el widget no la cambia solo.
+    ahead: opts.test ? [] : Array.from({ length: AHEAD_DAYS }, (_, i) => buildWidgetFrame(state, addDays(today, i + 1))),
+  };
+  if (opts.test) payload.test = true;
+  return payload;
+}
+
+// ---------- Canal con la app «Rachas» ----------
+
+/** Paquete de la app nativa «Rachas». */
+const APP_PACKAGE = 'io.github.jcoronadoccorimanya08.rachas';
+
+/**
+ * ¿El mensaje lo manda Chrome en nombre de la app «Rachas»? Chrome identifica a la app verificada
+ * como «android-app://<sitio>/<paquete>» (o «android-app://<paquete>»). Una página web no puede fingir ese origen.
+ */
+export function isRachasOrigin(origin: string, self: string): boolean {
+  if (origin === self) return true;
+  if (!origin.startsWith('android-app://')) return false;
+  return origin.slice('android-app://'.length).split(/[/?#]/).includes(APP_PACKAGE);
+}
+
+/** off: no hay app nativa · connecting: llegó el canal · ready: la app respondió · saved: el widget guardó tu resumen. */
+export type BridgeStatus = 'off' | 'connecting' | 'ready' | 'saved';
 
 let port: MessagePort | null = null;
 let last: string | null = null;
+let started = false;
+let status: BridgeStatus = 'off';
+const listeners = new Set<() => void>();
 
-/** Escucha el canal de la app nativa. Solo acepta mensajes de nuestro propio origen (la app verificada lo usa). */
+function setStatus(next: BridgeStatus) {
+  if (status === next) return;
+  status = next;
+  for (const f of listeners) f();
+}
+
+/** Estado del canal con el widget, para mostrarlo en Ajustes. */
+export function useBridgeStatus(): BridgeStatus {
+  return useSyncExternalStore(
+    (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+    () => status,
+    () => 'off',
+  );
+}
+
+/** Escucha el canal de la app nativa. Se llama al cargar la página, antes de que Chrome entregue el puerto. */
 export function initWidgetBridge(): void {
-  if (typeof window === 'undefined') return;
+  if (started || typeof window === 'undefined') return;
+  started = true;
   window.addEventListener('message', (e: MessageEvent) => {
-    const trusted = e.origin === window.location.origin || e.origin.startsWith(APP_ORIGIN);
-    if (!trusted || !e.ports || e.ports.length !== 1) return;
+    if (!isRachasOrigin(e.origin, window.location.origin) || !e.ports || e.ports.length !== 1) return;
     port = e.ports[0]!;
+    port.onmessage = (m: MessageEvent) => {
+      const text = typeof m.data === 'string' ? m.data : '';
+      if (text.startsWith('rachas:ok')) setStatus('saved');
+      else if (text.startsWith('rachas:') && status !== 'saved') setStatus('ready');
+    };
+    setStatus('connecting');
     if (last) sendRaw(last);
   });
 }

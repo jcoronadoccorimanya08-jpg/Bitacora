@@ -27,6 +27,7 @@ import {
   verifyPattern,
 } from '../lib/store';
 import type { AppState, GrandPrize, Habit, HabitValue } from '../lib/types';
+import { useBridgeStatus, type BridgeStatus } from '../lib/widget';
 import type { VaultRecord } from '../lib/vault';
 
 type Pending =
@@ -292,6 +293,11 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
             ))}
           </div>
         </div>
+      </div>
+
+      <SectionTitle>Widget y recordatorio</SectionTitle>
+      <div className="group">
+        <WidgetItem />
       </div>
 
       <SectionTitle>Modo prueba</SectionTitle>
@@ -689,6 +695,22 @@ function BackupPattern({ record, onClose, onOpened }: { record: Pick<VaultRecord
       </main>
     </div>
   );
+}
+
+const WIDGET_TEXT: Record<BridgeStatus, { title: string; note: string }> = {
+  off: {
+    title: 'Abre Bitácora desde la app Rachas',
+    note: 'Así tu widget discreto muestra tu racha (sin nombres), cambia de día solo y a las 22:30 te recuerda anotar tu día.',
+  },
+  connecting: { title: 'Conectando con el widget…', note: 'Toma un momento. Si no cambia, cierra y abre Bitácora desde el ícono de Rachas.' },
+  ready: { title: 'Conectando con el widget…', note: 'Toma un momento. Si no cambia, cierra y abre Bitácora desde el ícono de Rachas.' },
+  saved: { title: 'Widget conectado ✓', note: 'Se actualiza cada vez que marcas algo, sin nombres. A las 22:30 te recuerda anotar tu día.' },
+};
+
+/** Si Bitácora se abrió desde la app Rachas y el widget ya recibió tu resumen. */
+function WidgetItem() {
+  const text = WIDGET_TEXT[useBridgeStatus()];
+  return <Item title={text.title} note={text.note} />;
 }
 
 function Item({ title, note, children }: { title: string; note?: string; children?: ReactNode }) {

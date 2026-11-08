@@ -8,7 +8,11 @@ import { Icon } from './Icon';
 /** Lo nuevo de esta versión (se muestra una vez después de actualizar). */
 export const WHATS_NEW = {
   version: __APP_VERSION__,
-  items: [`Semana victoriosa con ${OTHER_NAME}.`, 'Insignias cada 2 semanas y ánimo del día.', 'Historial de ciclos en Análisis.'],
+  items: [
+    'Widget discreto de Rachas: ahora sí recibe tu racha (sin nombres) y cambia de día solo.',
+    'A las 22:30, un recordatorio para anotar tu día (con Rachas 3.0).',
+    'Ajustes → Widget y recordatorio: ves si tu widget está conectado.',
+  ],
 };
 
 const SEEN_KEY = 'bitacora.seen-version';

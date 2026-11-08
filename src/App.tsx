@@ -11,7 +11,7 @@ import { applyLook, readLook, type Look } from './lib/look';
 import { claimable, grandStatus, pendingChests, steps, withClaims } from './lib/rewards';
 import { actions, currentBackup, getState, lock, onSaveError, useStore } from './lib/store';
 import { setTeamTest, teamFor, writeShare } from './lib/team';
-import { buildWidgetPayload, initWidgetBridge, sendWidget } from './lib/widget';
+import { buildWidgetPayload, sendWidget } from './lib/widget';
 import type { ISODate } from './lib/dates';
 import { InsightsScreen } from './screens/Insights';
 import { LockScreen } from './screens/Lock';
@@ -49,10 +49,8 @@ export function App() {
   useEffect(() => {
     if (!state) return;
     writeShare({ start: state.settings.startDate, weeks: weeklyPcts(state.settings, state.days, today), grandClaimed: Boolean(state.claims.grand) });
-    sendWidget(buildWidgetPayload(state, today));
-  }, [state, today]);
-
-  useEffect(() => initWidgetBridge(), []);
+    sendWidget(buildWidgetPayload(state, today, { test: Boolean(test) }));
+  }, [state, today, test]);
 
   // Bloqueo automático y cortina de privacidad al salir de la app.
   useEffect(() => {
