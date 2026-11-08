@@ -10,6 +10,7 @@ import { applyLook, readLook, type Look } from './lib/look';
 import { claimable, grandStatus, pendingChests, steps, withClaims } from './lib/rewards';
 import { actions, currentBackup, getState, lock, onSaveError, useStore } from './lib/store';
 import { teamFor, writeShare } from './lib/team';
+import { buildWidgetPayload, initWidgetBridge, sendWidget } from './lib/widget';
 import type { ISODate } from './lib/dates';
 import { InsightsScreen } from './screens/Insights';
 import { LockScreen } from './screens/Lock';
@@ -40,10 +41,14 @@ export function App() {
   useEffect(() => onSaveError((m) => toast(m, 'error')), []);
 
   // Semana victoriosa: publica solo tus porcentajes semanales (números) para que Val Q los lea.
+  // Widget de Android: si Bitácora se abrió desde la app «Rachas», le manda el resumen (solo números).
   useEffect(() => {
     if (!state) return;
     writeShare({ start: state.settings.startDate, weeks: weeklyPcts(state.settings, state.days, today), grandClaimed: Boolean(state.claims.grand) });
+    sendWidget(buildWidgetPayload(state, today));
   }, [state, today]);
+
+  useEffect(() => initWidgetBridge(), []);
 
   // Bloqueo automático y cortina de privacidad al salir de la app.
   useEffect(() => {
