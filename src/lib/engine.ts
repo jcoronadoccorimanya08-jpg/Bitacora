@@ -147,6 +147,60 @@ export function habitStats(s: Settings, days: Days, dates: ISODate[]): HabitStat
   });
 }
 
+/** ¿El hábito estuvo bien ese día? Un comodín salva el día entero. */
+export function habitOk(days: Days, date: ISODate, habitId: string): boolean {
+  return Boolean(days[date]?.wildcard) || markOf(days, date, habitId) === 'ok';
+}
+
+export interface HabitRun {
+  habit: Habit;
+  /** Días seguidos en «ok» hasta hoy (hoy sin marcar todavía no corta: cuenta desde ayer). */
+  run: number;
+  /** La racha más larga de este hábito en el ciclo. */
+  best: number;
+  /** % de días en «ok» de los que ya cuentan para este hábito (los pasados y hoy si ya lo marcaste). */
+  pct: number;
+  /** Días que cuentan para el %. */
+  counted: number;
+  /** Cómo va hoy: «ok», «fail» o sin marcar. */
+  today: Mark | undefined;
+}
+
+/**
+ * Racha y % de cada hábito. A diferencia de la racha del día limpio, aquí una caída reinicia la racha de ese
+ * hábito (son tus días seguidos sin caer en él); los demás hábitos siguen sumando. Un día pasado sin marcar no cuenta como «ok».
+ */
+export function habitRuns(s: Settings, days: Days, today: ISODate): HabitRun[] {
+  const ref = lastPlayableDay(s, today);
+  const played = ref >= s.startDate ? rangeDates(s.startDate, ref) : [];
+  return s.habits.map((habit) => {
+    let cur = 0;
+    let best = 0;
+    let ok = 0;
+    let counted = 0;
+    for (const d of played) {
+      const pending = d === today && markOf(days, d, habit.id) === undefined && !days[d]?.wildcard;
+      if (pending) continue; // hoy todavía se puede marcar
+      counted++;
+      if (habitOk(days, d, habit.id)) {
+        ok++;
+        cur++;
+        if (cur > best) best = cur;
+      } else {
+        cur = 0;
+      }
+    }
+    return {
+      habit,
+      run: cur,
+      best,
+      pct: counted ? Math.round((ok / counted) * 100) : 0,
+      counted,
+      today: ref === today ? markOf(days, today, habit.id) : undefined,
+    };
+  });
+}
+
 /** Disparadores ordenados por frecuencia en un rango de fechas. */
 export function triggerCounts(days: Days, dates: ISODate[]): [string, number][] {
   const count: Record<string, number> = {};

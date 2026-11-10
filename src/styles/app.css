@@ -58,6 +58,13 @@
   --fail-line: rgba(238, 111, 91, 0.45);
   --future: #1b2623;
   --info: #5ab6ff;
+  /* Color de cada hábito (el mismo en el widget de Rachas, donde no hay nombres). */
+  --h1: #5ab6ff;
+  --h2: #ffb547;
+  --h3: #b69cff;
+  --h4: #ff8ac4;
+  --h5: #b8e65a;
+  --h6: #4fd1c5;
   --info-ink: #04182b;
   --info-soft: rgba(90, 182, 255, 0.12);
   --info-line: rgba(90, 182, 255, 0.38);
@@ -106,6 +113,12 @@
     --fail-line: rgba(184, 67, 47, 0.4);
     --future: #e2e9e6;
     --info: #1f6fd1;
+    --h1: #1f6fd1;
+    --h2: #a35f00;
+    --h3: #6b46d1;
+    --h4: #c2307a;
+    --h5: #4d7a0c;
+    --h6: #0e7c6b;
     --info-ink: #ffffff;
     --info-soft: rgba(31, 111, 209, 0.09);
     --info-line: rgba(31, 111, 209, 0.35);
@@ -154,6 +167,12 @@
   --fail-line: rgba(184, 67, 47, 0.4);
   --future: #e2e9e6;
   --info: #1f6fd1;
+  --h1: #1f6fd1;
+  --h2: #a35f00;
+  --h3: #6b46d1;
+  --h4: #c2307a;
+  --h5: #4d7a0c;
+  --h6: #0e7c6b;
   --info-ink: #ffffff;
   --info-soft: rgba(31, 111, 209, 0.09);
   --info-line: rgba(31, 111, 209, 0.35);
@@ -2479,6 +2498,28 @@ dialog::backdrop {
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
+}
+.hstats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 6px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.hstats b {
+  font-weight: 650;
+  color: var(--text);
+}
+.hstats svg {
+  color: var(--gold);
+}
+.hdot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
 .value-tag {
   flex: none;

@@ -1,7 +1,7 @@
 {
   "name": "bitacora",
   "private": true,
-  "version": "2.4.2",
+  "version": "2.5.0",
   "description": "Bitácora: registro diario privado para dejar hábitos, con racha, ahorro, disparadores y premios. PWA offline con patrón, huella y datos cifrados.",
   "type": "module",
   "scripts": {

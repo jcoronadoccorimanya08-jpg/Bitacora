@@ -9,9 +9,9 @@ import { Icon } from './Icon';
 export const WHATS_NEW = {
   version: __APP_VERSION__,
   items: [
-    'Widget discreto de Rachas: ahora sí recibe tu racha (sin nombres) y cambia de día solo.',
-    'A las 22:30, un recordatorio para anotar tu día (con Rachas 3.0).',
-    'Ajustes → Widget y recordatorio: ves si tu widget está conectado.',
+    'Cada hábito con su racha y su % limpio, en Hoy (con su color).',
+    'En el widget de Rachas, tus hábitos por color, sin nombres: % limpio y días seguidos.',
+    'Una caída reinicia solo la racha de ese hábito; los demás siguen sumando.',
   ],
 };
 

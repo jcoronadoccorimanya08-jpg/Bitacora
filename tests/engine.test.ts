@@ -233,3 +233,41 @@ describe('montaña y semanas', () => {
     expect(weekPct(s, days, 3, '2026-11-20')).toBeNull();
   });
 });
+
+describe('racha y % por hábito', () => {
+  it('una caída reinicia solo ese hábito; hoy sin marcar no corta; el comodín cuenta', async () => {
+    const { habitRuns } = await import('../src/lib/engine');
+    const { initialState } = await import('../src/lib/store');
+    const H = [
+      { id: 'a', name: 'A', q: '', ok: '', fail: '', phrase: '' },
+      { id: 'b', name: 'B', q: '', ok: '', fail: '', phrase: '' },
+    ];
+    const st = initialState({ startDate: '2026-11-09', habits: H });
+    st.days['2026-11-09'] = { states: { a: 'ok', b: 'fail' }, triggers: {} };
+    st.days['2026-11-10'] = { states: { a: 'ok', b: 'ok' }, triggers: {} };
+    st.days['2026-11-11'] = { states: { a: 'ok', b: 'ok' }, triggers: {} };
+    // Hoy (12) sin marcar: las rachas cuentan hasta ayer.
+    const r = habitRuns(st.settings, st.days, '2026-11-12');
+    expect(r.map((x) => [x.run, x.best, x.pct, x.counted, x.today])).toEqual([
+      [3, 3, 100, 3, undefined],
+      [2, 2, 67, 3, undefined],
+    ]);
+    // Hoy cae en A: su racha vuelve a 0, pero su mejor racha queda; B sigue.
+    st.days['2026-11-12'] = { states: { a: 'fail', b: 'ok' }, triggers: {} };
+    const r2 = habitRuns(st.settings, st.days, '2026-11-12');
+    expect(r2.map((x) => [x.run, x.best, x.pct, x.today])).toEqual([
+      [0, 3, 75, 'fail'],
+      [3, 3, 75, 'ok'],
+    ]);
+    // Un día pasado sin marcar corta la racha; un comodín la salva.
+    st.days['2026-11-13'] = { states: {}, triggers: {} };
+    st.days['2026-11-14'] = { states: {}, triggers: {}, wildcard: true };
+    const r3 = habitRuns(st.settings, st.days, '2026-11-15');
+    expect(r3.map((x) => x.run)).toEqual([1, 1]);
+    // Antes del ciclo no hay nada.
+    expect(habitRuns(st.settings, st.days, '2026-11-08').map((x) => [x.run, x.counted])).toEqual([
+      [0, 0],
+      [0, 0],
+    ]);
+  });
+});

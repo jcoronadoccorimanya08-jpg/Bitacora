@@ -113,3 +113,23 @@ describe('canal de Rachas', () => {
     expect(isRachasChannel({ ...ok, origin: 'null' }, self)).toBe(false);
   });
 });
+
+describe('widget: cada hábito sin nombre', () => {
+  it('racha, % y cómo va hoy, en el orden de la app y solo números', () => {
+    const st = initialState({ startDate: START, habits: H, grand: { name: 'Premio privado', price: 100 } });
+    st.days['2026-11-09'] = { states: { a: 'ok', b: 'fail' }, triggers: { b: ['Estrés'] } };
+    st.days['2026-11-10'] = { states: { a: 'ok' }, triggers: {} };
+    const p = buildWidgetPayload(st, '2026-11-10');
+    expect(p.habits).toEqual([
+      { s: 2, p: 100, t: 1 },
+      { s: 0, p: 0, t: 0 },
+    ]);
+    // Mañana, sin marcar: la racha de A sigue (cuenta hasta hoy).
+    expect(p.ahead[0]!.habits).toEqual([
+      { s: 2, p: 100, t: 0 },
+      { s: 0, p: 0, t: 0 },
+    ]);
+    const text = JSON.stringify(p.habits);
+    for (const word of ['privado', 'Hábito', 'Otro', 'Estrés']) expect(text).not.toContain(word);
+  });
+});

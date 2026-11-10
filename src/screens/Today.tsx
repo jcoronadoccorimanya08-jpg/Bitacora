@@ -13,6 +13,7 @@ import { addDays, diffDays, formatLong, localDateOf, weekday, type ISODate } fro
 import {
   cyclePhase,
   dayNumber,
+  habitRuns,
   hasFail,
   isClean,
   isEditable,
@@ -29,6 +30,7 @@ import { formatHours } from '../lib/report';
 import { badgeBlocks, BADGE_PCT, earnedTiers } from '../lib/badges';
 import { steps, wildcards, withClaims } from '../lib/rewards';
 import { actions, biometricSupport, enableBiometric, getState, lock } from '../lib/store';
+import type { HabitRun } from '../lib/engine';
 import type { AppState, Habit, Mark, Settings } from '../lib/types';
 
 interface Props {
@@ -47,6 +49,7 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
   const s = state.settings;
   const phase = cyclePhase(s, today);
   const st = streakStats(s, state.days, today);
+  const runs = habitRuns(s, state.days, today);
   const playable = lastPlayableDay(s, today);
   const editable = isEditable(s, selected, today);
   const next = nextMilestone(st.run, s.cycleLength);
@@ -249,15 +252,17 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
           <SavingsCard state={state} today={today} selected={selected} editable={editable} />
 
           <SectionTitle aside={`${okCount(state.days, selected, s.habits)}/${s.habits.length} limpios`}>Tu día</SectionTitle>
-          {s.habits.map((h) => {
+          {s.habits.map((h, i) => {
             const m = markOf(state.days, selected, h.id);
             const chosen = rec?.triggers?.[h.id] ?? [];
+            const r = runs[i];
             return (
               <article key={h.id} className={`vcard ${m ?? ''}`} aria-label={h.name}>
                 <div className="vcard-head">
                   <h3>{h.name}</h3>
                   {h.value && h.value.amount > 0 && <span className="value-tag">{valueTag(h)}</span>}
                 </div>
+                {r && <HabitStats run={r} index={i} />}
                 <p className="q">{h.q}</p>
                 <div className="choices">
                   <button type="button" className="choice-btn ok" aria-pressed={m === 'ok'} disabled={!editable} onClick={() => onMark(h.id, 'ok')}>
@@ -468,5 +473,25 @@ function BeforeStart({ s, today, onGoRewards }: { s: Settings; today: ISODate; o
         <Icon name="calendar" size={18} /> Prefiero empezar hoy
       </button>
     </section>
+  );
+}
+
+/** El color de cada hábito: el mismo que lo identifica (sin nombre) en el widget de Rachas. */
+export function habitColor(index: number): string {
+  return `var(--h${(index % 6) + 1})`;
+}
+
+/** Racha y % de un hábito: días seguidos sin caer en él y qué tan seguido lo cumples en el ciclo. */
+function HabitStats({ run, index }: { run: HabitRun; index: number }) {
+  const days = run.run === 1 ? '1 día seguido' : `${run.run} días seguidos`;
+  const label = run.run > 0 ? days : run.today === 'fail' ? 'Mañana vuelve a empezar' : 'Empieza hoy';
+  return (
+    <p className="hstats">
+      <i className="hdot" style={{ background: habitColor(index) }} aria-hidden="true" />
+      {run.run > 0 && <Icon name="flame" size={14} />}
+      <b>{label}</b>
+      {run.counted > 0 && <span>· {run.pct} % limpio</span>}
+      {run.best > run.run && <span>· mejor {run.best}</span>}
+    </p>
   );
 }

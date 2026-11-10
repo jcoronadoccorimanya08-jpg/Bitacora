@@ -8,7 +8,7 @@ import { useSyncExternalStore } from 'react';
 import { badgeBlocks, earnedTiers } from './badges';
 import { STEP } from './config';
 import { addDays, maxDate, minDate, rangeDates, type ISODate } from './dates';
-import { cycleEnd, cyclePhase, cycleWeeks, dayNumber, dayPct, isClean, lastPlayableDay, markOf, nextMilestone, savings, streakStats } from './engine';
+import { cycleEnd, cyclePhase, cycleWeeks, dayNumber, dayPct, habitRuns, isClean, lastPlayableDay, markOf, nextMilestone, savings, streakStats } from './engine';
 import { steps } from './rewards';
 import type { Accent, AppState } from './types';
 
@@ -47,6 +47,17 @@ export interface WidgetFrame {
   step: number;
   /** Insignias ganadas en el ciclo (1 = Bronce … 6 = Leyenda). */
   badges: number;
+  /**
+   * Cada hábito, en el orden de la app y SIN nombre: días seguidos en «ok» (s), % de días limpios (p)
+   * y cómo va hoy (t: 0 sin marcar, 1 ok, 2 caída). En el widget se reconoce por su color y su lugar.
+   */
+  habits: WidgetHabit[];
+}
+
+export interface WidgetHabit {
+  s: number;
+  p: number;
+  t: 0 | 1 | 2;
 }
 
 export interface WidgetPayload extends WidgetFrame {
@@ -100,6 +111,7 @@ export function buildWidgetFrame(state: AppState, today: ISODate): WidgetFrame {
     nextKind: stepInfo ? (stepInfo.kind === 'prize' ? 'premio' : 'cofre') : null,
     step: STEP,
     badges: earnedTiers(badgeBlocks(s, state.days, today)).length,
+    habits: habitRuns(s, state.days, today).map((r) => ({ s: r.run, p: r.pct, t: r.today === 'ok' ? 1 : r.today === 'fail' ? 2 : 0 })),
   };
 }
 
