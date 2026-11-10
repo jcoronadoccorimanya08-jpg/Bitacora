@@ -4,6 +4,7 @@ import { GoalCard } from '../components/GoalCard';
 import { Icon } from '../components/Icon';
 import { HowItWorks, WhatsNewBanner } from '../components/HowItWorks';
 import { InstallCard } from '../components/InstallCard';
+import { WidgetHint } from '../components/WidgetHint';
 import { MoodPicker } from '../components/MoodPicker';
 import { UrgeOverlay } from '../components/UrgeOverlay';
 import { SectionTitle } from '../components/ui';
@@ -150,6 +151,7 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
 
       {!hasBio && <BioPromo />}
       <InstallCard appName="Bitácora" dismissible />
+      <WidgetHint />
       <WhatsNewBanner onOpen={() => setHelp(true)} />
 
       {phase === 'before' ? (

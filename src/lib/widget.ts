@@ -170,12 +170,32 @@ export function initWidgetBridge(): void {
     port = e.ports[0]!;
     port.onmessage = (m: MessageEvent) => {
       const text = typeof m.data === 'string' ? m.data : '';
-      if (text.startsWith('rachas:ok')) setStatus('saved');
-      else if (text.startsWith('rachas:') && status !== 'saved') setStatus('ready');
+      if (text.startsWith('rachas:ok')) {
+        setStatus('saved');
+      } else if (text.startsWith('rachas:')) {
+        // «hola»: la app ya escucha. Lo que se mandó antes pudo perderse, así que se manda otra vez.
+        if (status !== 'saved') setStatus('ready');
+        if (last) sendRaw(last);
+      }
     };
     setStatus('connecting');
     if (last) sendRaw(last);
   });
+}
+
+/** Paquete con el que Chrome abre la app desde «Rachas» (document.referrer). */
+const RACHAS_REFERRER = `android-app://${APP_PACKAGE}`;
+
+export type WidgetHintKind = 'outside' | 'failed' | null;
+
+/**
+ * ¿Avisar que el widget no se actualiza? Solo en Android, abierta como app, si pasados unos segundos no llegó
+ * el canal: «outside» si se abrió sin pasar por Rachas (por ejemplo, con el ícono que instaló Chrome),
+ * «failed» si se abrió desde Rachas y aun así no conectó.
+ */
+export function widgetHint(o: { android: boolean; standalone: boolean; waited: boolean; status: BridgeStatus; referrer: string }): WidgetHintKind {
+  if (!o.android || !o.standalone || !o.waited || o.status !== 'off') return null;
+  return o.referrer.startsWith(RACHAS_REFERRER) ? 'failed' : 'outside';
 }
 
 function sendRaw(msg: string) {

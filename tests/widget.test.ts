@@ -79,3 +79,18 @@ describe('widget v3 (discreto): cambia de día solo', () => {
     expect(isRachasOrigin('https://otro-sitio.example', self)).toBe(false);
   });
 });
+
+describe('aviso de widget sin actualizar', () => {
+  it('solo en Android como app, si pasado un rato no llegó el canal', async () => {
+    const { widgetHint } = await import('../src/lib/widget');
+    const base = { android: true, standalone: true, waited: true, status: 'off' as const, referrer: '' };
+    expect(widgetHint(base)).toBe('outside');
+    expect(widgetHint({ ...base, referrer: 'android-app://org.chromium.webapk.a1b2/' })).toBe('outside');
+    expect(widgetHint({ ...base, referrer: 'android-app://io.github.jcoronadoccorimanya08.rachas/' })).toBe('failed');
+    expect(widgetHint({ ...base, status: 'saved' })).toBeNull();
+    expect(widgetHint({ ...base, status: 'connecting' })).toBeNull();
+    expect(widgetHint({ ...base, waited: false })).toBeNull();
+    expect(widgetHint({ ...base, standalone: false })).toBeNull();
+    expect(widgetHint({ ...base, android: false })).toBeNull();
+  });
+});
