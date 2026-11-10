@@ -125,13 +125,27 @@ export function buildWidgetPayload(state: AppState, today: ISODate, opts: { test
 const APP_PACKAGE = 'io.github.jcoronadoccorimanya08.rachas';
 
 /**
- * ¿El mensaje lo manda Chrome en nombre de la app «Rachas»? Chrome identifica a la app verificada
- * como «android-app://<sitio>/<paquete>» (o «android-app://<paquete>»). Una página web no puede fingir ese origen.
+ * ¿El origen es el de Chrome hablando en nombre de la app «Rachas»? Chrome actual lo manda como
+ * «android-app://<sitio>» (el origen solo guarda el sitio, sin el paquete); versiones anteriores, como
+ * «android-app://<sitio>/<paquete>» o «android-app://<paquete>». Chrome solo abre este canal a una app que
+ * assetlinks.json verifica para este sitio, y ahí solo está Rachas. Una página web no puede fingir este origen.
  */
 export function isRachasOrigin(origin: string, self: string): boolean {
   if (origin === self) return true;
   if (!origin.startsWith('android-app://')) return false;
-  return origin.slice('android-app://'.length).split(/[/?#]/).includes(APP_PACKAGE);
+  const parts = origin.slice('android-app://'.length).split(/[/?#]/);
+  let host = '';
+  try {
+    host = new URL(self).host;
+  } catch {
+    /* sin sitio propio */
+  }
+  return parts.includes(APP_PACKAGE) || (host !== '' && parts[0] === host);
+}
+
+/** El primer mensaje del canal: lo manda Chrome (sin ventana de origen), con un solo puerto y con el origen de Rachas. */
+export function isRachasChannel(e: { origin: string; source: unknown; ports: readonly unknown[] | null }, self: string): boolean {
+  return e.source === null && !!e.ports && e.ports.length === 1 && isRachasOrigin(e.origin, self);
 }
 
 /** off: no hay app nativa · connecting: llegó el canal · ready: la app respondió · saved: el widget guardó tu resumen. */
@@ -166,7 +180,7 @@ export function initWidgetBridge(): void {
   if (started || typeof window === 'undefined') return;
   started = true;
   window.addEventListener('message', (e: MessageEvent) => {
-    if (!isRachasOrigin(e.origin, window.location.origin) || !e.ports || e.ports.length !== 1) return;
+    if (!isRachasChannel(e, window.location.origin)) return;
     port = e.ports[0]!;
     port.onmessage = (m: MessageEvent) => {
       const text = typeof m.data === 'string' ? m.data : '';

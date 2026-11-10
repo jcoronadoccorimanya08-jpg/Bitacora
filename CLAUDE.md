@@ -10,7 +10,7 @@ Es independiente de cualquier otra app: no compartas código en tiempo de ejecuc
 - Los datos se guardan **solo cifrados** (`src/lib/vault.ts`): una llave de datos al azar (AES-GCM), envuelta por el patrón (PBKDF2) y opcionalmente por la huella (passkey con PRF). Nunca guardes el patrón ni datos en texto plano. Las únicas preferencias sin cifrar son el tema y la apariencia (`bitacora.theme`, `bitacora.look`: color y tamaño de letra), el aviso de instalación (`bitacora.install-hint`) el aviso de huella (`bitacora.bio-promo`) y la última versión vista (`bitacora.seen-version`, para «Novedades»); ninguna dice nada de la persona. Para la semana victoriosa, cada app publica **solo números** (el porcentaje de cada semana, por fecha) en `bitacora.semanas` y lee `val-quirurgico.semanas`: nunca nombres de hábitos, disparadores ni montos.
 - La imagen del reporte no muestra nombres de hábitos ni disparadores.
 - Sin analítica, sin servidores y sin librerías que se conecten a internet.
-- **Widget (app «Rachas»)** (`src/lib/widget.ts`): por postMessage, solo dentro del teléfono, se mandan **solo números** (racha, % por día, ahorro, días para el escalón) para hoy, mañana y pasado mañana. Nunca nombres de hábitos, disparadores ni premios. El canal llega con origen `android-app://<sitio>/<paquete>` (`isRachasOrigin`).
+- **Widget (app «Rachas»)** (`src/lib/widget.ts`): por postMessage, solo dentro del teléfono, se mandan **solo números** (racha, % por día, ahorro, días para el escalón) para hoy, mañana y pasado mañana. Nunca nombres de hábitos, disparadores ni premios. El canal llega sin ventana de origen (`source` null) y con origen `android-app://<sitio>`: Chrome actual guarda solo el sitio, sin el paquete (`isRachasChannel`).
 
 ## Reglas del producto
 
