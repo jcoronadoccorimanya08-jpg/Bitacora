@@ -5,7 +5,7 @@ import { PatternPad } from '../components/PatternPad';
 import { checkForUpdate } from '../components/UpdateBanner';
 import { ConfirmDialog, ScreenHeader, SectionTitle } from '../components/ui';
 import { canShareFiles, downloadBackupText, parseFile, serializeBackup, shareBackupText, type ConfigData } from '../lib/backup';
-import { AUTOLOCK_OPTIONS, MAX_HABITS, MAX_TRIGGERS } from '../lib/config';
+import { AUTOLOCK_OPTIONS, HABIT_SUGGESTIONS, MAX_HABITS, MAX_TRIGGERS } from '../lib/config';
 import { diffDays, formatLong, formatShort, isValidISODate, localDateOf, plural, type ISODate } from '../lib/dates';
 import { cycleEnd } from '../lib/engine';
 import { toast } from '../lib/feedback';
@@ -183,6 +183,29 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
             }}
           />
         )}
+        {s.habits.length < MAX_HABITS && (
+          <div className="item col">
+            <div className="txt">
+              <b>Sugerencias</b>
+              <span>Un toque y queda con su pregunta y sus botones.</span>
+            </div>
+            <div className="tchips" style={{ marginTop: 8 }}>
+              {HABIT_SUGGESTIONS.filter((t) => !s.habits.some((h) => h.name.toLowerCase() === t.name.toLowerCase())).map((t) => (
+                <button
+                  key={t.name}
+                  type="button"
+                  className="tchip"
+                  onClick={() => {
+                    actions.addHabitTemplate(t);
+                    toast(`«${t.name}» agregado.`, 'success');
+                  }}
+                >
+                  + {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <SectionTitle aside={`${s.triggers.length}/${MAX_TRIGGERS}`}>Disparadores</SectionTitle>
@@ -215,18 +238,13 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
         )}
       </div>
 
-      <SectionTitle>Ahorro y gran premio</SectionTitle>
+      <SectionTitle>Gran premio</SectionTitle>
       <div className="group">
-        <Stepper
-          title="«Dije no a una fiesta»"
-          note={s.partyBonus ? `Cada vez suma Bs ${s.partyBonus} a tu ahorro.` : 'Botón apagado. Súbelo para mostrarlo en Hoy.'}
-          value={s.partyBonus}
-          min={0}
-          max={2000}
-          step={10}
-          prefix="Bs "
-          onChange={(v) => actions.setPartyBonus(v)}
-        />
+        <Item title="«Dije no a una fiesta»" note={s.partyBonus ? 'El botón aparece en Hoy y queda anotado el día que lo tocas.' : 'Botón apagado.'}>
+          <button type="button" className="btn sm" aria-pressed={s.partyBonus > 0} onClick={() => actions.setPartyBonus(s.partyBonus > 0 ? 0 : 1)}>
+            {s.partyBonus > 0 ? 'Apagar' : 'Mostrar'}
+          </button>
+        </Item>
         <GrandEditor grand={s.grand} defaultDate={cycleEnd(s)} />
       </div>
 
@@ -479,7 +497,7 @@ function confirmContent(p: Pending): { title: string; body: ReactNode; confirmLa
     case 'config':
       return {
         title: 'Aplicar configuración',
-        body: `Tus hábitos pasarán a ser: ${p.habits.map((h) => h.name).join(', ')}.${p.milestones.length ? ` ${p.milestones.length} premios con precio.` : ''}${p.grand ? ` Gran premio: ${p.grand.name}.` : ''} Tu historial se conserva.`,
+        body: `Tus hábitos pasarán a ser: ${p.habits.map((h) => h.name).join(', ')}.${p.milestones.length ? ` ${p.milestones.length} premios.` : ''}${p.grand ? ` Gran premio: ${p.grand.name}.` : ''} Tu historial se conserva.`,
         confirmLabel: 'Aplicar',
       };
     default:
@@ -487,15 +505,16 @@ function confirmContent(p: Pending): { title: string; body: ReactNode; confirmLa
   }
 }
 
+// Sin dinero: los Bs que tuviera un hábito quedan guardados pero no se muestran ni se eligen.
 const VALUE_KINDS: [HabitValue['kind'] | 'none', string][] = [
   ['none', 'Nada'],
-  ['bs', 'Bs'],
   ['horas', 'Horas'],
   ['dias', 'Días'],
 ];
 
 function HabitEditor({ habit: h, index: i }: { habit: Habit; index: number }) {
-  const kind = h.value?.kind ?? 'none';
+  const money = h.value?.kind === 'bs';
+  const kind = money ? 'none' : (h.value?.kind ?? 'none');
   return (
     <div className="habit-edit">
       <details className="habit-details">
@@ -517,17 +536,17 @@ function HabitEditor({ habit: h, index: i }: { habit: Habit; index: number }) {
                 key={k}
                 type="button"
                 aria-pressed={kind === k}
-                onClick={() => actions.setHabitValue(h.id, k === 'none' ? null : { kind: k, amount: h.value?.amount || 1, ...(k === 'dias' ? { label: h.value?.label || h.name } : {}) })}
+                onClick={() => (money && k === 'none' ? undefined : actions.setHabitValue(h.id, k === 'none' ? null : { kind: k, amount: h.value?.amount || 1, ...(k === 'dias' ? { label: h.value?.label || h.name } : {}) }))}
               >
                 {label}
               </button>
             ))}
           </div>
         </div>
-        {h.value && (
+        {h.value && !money && (
           <div className="row2">
             <label className="lbl-field">
-              {h.value.kind === 'bs' ? 'Bs por día' : h.value.kind === 'horas' ? 'Horas por día' : 'Días por día'}
+              {h.value.kind === 'horas' ? 'Horas por día' : 'Días por día'}
               <NumberField value={h.value.amount} label={`Cantidad de ${h.name}`} onCommit={(n) => actions.setHabitValue(h.id, { ...h.value!, amount: n })} />
             </label>
             {h.value.kind === 'dias' && (
@@ -550,12 +569,10 @@ function HabitEditor({ habit: h, index: i }: { habit: Habit; index: number }) {
 
 function GrandEditor({ grand, defaultDate }: { grand: GrandPrize | null; defaultDate: ISODate }) {
   const [name, setName] = useState(grand?.name ?? '');
-  const [price, setPrice] = useState(grand?.price ? String(grand.price) : '');
   const [date, setDate] = useState(grand?.date ?? '');
   const [weeks, setWeeks] = useState(grand?.weeks ? String(grand.weeks) : '');
   const dirty =
     name.trim() !== (grand?.name ?? '') ||
-    price !== (grand?.price ? String(grand.price) : '') ||
     date !== (grand?.date ?? '') ||
     weeks !== (grand?.weeks ? String(grand.weeks) : '');
   return (
@@ -568,16 +585,10 @@ function GrandEditor({ grand, defaultDate }: { grand: GrandPrize | null; default
         Nombre
         <input className="field" value={name} maxLength={60} placeholder="Tu gran premio" onChange={(e) => setName(e.target.value)} />
       </label>
-      <div className="row2">
-        <label className="lbl-field">
-          Precio (Bs)
-          <input className="field" value={price} inputMode="numeric" placeholder="0" onChange={(e) => setPrice(e.target.value.replace(/\D/g, '').slice(0, 5))} />
-        </label>
-        <label className="lbl-field">
-          Fecha (opcional)
-          <input className="field" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
-      </div>
+      <label className="lbl-field">
+        Fecha (opcional)
+        <input className="field" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      </label>
       <label className="lbl-field">
         Semanas victoriosas necesarias (con Val Q)
         <input
@@ -595,7 +606,7 @@ function GrandEditor({ grand, defaultDate }: { grand: GrandPrize | null; default
         disabled={!dirty || !name.trim()}
         onClick={() => {
           const g: GrandPrize = { name: name.trim() };
-          if (price) g.price = Number(price);
+          if (grand?.price) g.price = grand.price; // guardado y oculto
           if (isValidISODate(date)) g.date = date;
           if (Number(weeks) > 0) g.weeks = Math.min(13, Number(weeks));
           actions.setGrand(g);
@@ -722,27 +733,6 @@ function Item({ title, note, children }: { title: string; note?: string; childre
       </div>
       {children}
     </div>
-  );
-}
-
-function Stepper(props: { title: string; note: string; value: number; min: number; max: number; step: number; prefix?: string; suffix?: string; onChange: (v: number) => void }) {
-  const { title, note, value, min, max, step, prefix = '', suffix = '', onChange } = props;
-  return (
-    <Item title={title} note={note}>
-      <div className="stepper">
-        <button type="button" aria-label={`Bajar ${title}`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - step))}>
-          −
-        </button>
-        <output aria-live="polite">
-          {prefix}
-          {value}
-          {suffix}
-        </output>
-        <button type="button" aria-label={`Subir ${title}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + step))}>
-          +
-        </button>
-      </div>
-    </Item>
   );
 }
 

@@ -131,7 +131,7 @@ export async function renderReportImage(state: AppState, today: ISODate, victori
   cards(340, [
     [`${clean}/${Math.max(played.length, 1)}`, 'días limpios', clean === played.length && played.length > 0 ? accent : text],
     [`${st.run}`, st.run === 1 ? 'día de racha' : 'días de racha', flame],
-    [`Bs ${sv.bs}`, 'ahorrados', accent],
+    [`${st.best}`, 'mejor racha', accent],
   ]);
 
   // Montaña del ciclo
@@ -220,7 +220,7 @@ export async function renderReportImage(state: AppState, today: ISODate, victori
     s.grand && grand.kind === 'locked' && grand.daysLeft > 0
       ? `Gran premio: ${s.grand.name} · ${grand.required ? `${grand.victories}/${grand.required} semanas victoriosas` : `faltan ${grand.daysLeft} días`}`
       : prize
-        ? `Próximo premio: día ${prize.day} · Bs ${prize.prize.price}`
+        ? `Próximo premio: día ${prize.day} · ${prize.prize.name}`
         : 'Un día limpio a la vez.';
   ctx.fillText(foot.length > 52 ? `${foot.slice(0, 51)}…` : foot, P, H - 64);
   ctx.fillStyle = muted;

@@ -1,6 +1,6 @@
 # Bitácora — guía para Claude
 
-PWA privada para dejar hábitos (ciclo de 90 días, racha, disparadores, ahorro y premios cada 7 días). Se usa en un Android, instalada desde Chrome.
+PWA privada para dejar hábitos (ciclo de 90 días, racha, disparadores y premios cada 7 días; sin dinero). Se usa en un Android, instalada desde Chrome.
 Es independiente de cualquier otra app: no compartas código en tiempo de ejecución ni datos. Única excepción acordada: los porcentajes semanales de la semana victoriosa con Val Q (ver abajo).
 
 ## Privacidad: reglas que no se rompen
@@ -17,8 +17,9 @@ Es independiente de cualquier otra app: no compartas código en tiempo de ejecuc
 - Interfaz en **español de Bolivia**, con tono directo y respetuoso. **Sin culpa**: una caída es información (se anota el disparador), no un fracaso.
 - Día limpio = todos los hábitos en "ok" (o un comodín). Una caída suelta no rompe la racha; dos días seguidos sin día limpio la reinician; hoy incompleto y sin caídas todavía no cuenta.
 - **Racha por hábito** (`habitRuns` en `src/lib/engine.ts`): días seguidos en «ok» de cada hábito (una caída reinicia solo ese; un comodín cuenta como «ok»; hoy sin marcar no corta) y % de días limpios del ciclo. Se ve en Hoy con el color del hábito (`--h1` … `--h6`) y, sin nombres, en el widget (por color y orden).
-- Escalones cada 7 días de racha (`STEP`), ganados con la **mejor** racha. Con premio en `settings.milestones` (nombre y precio, pagado con el ahorro); si no, cofre (el último, doble). Ciclo de 90 días.
-- Ahorro: cada día "ok" suma el `value` del hábito (Bs, horas o días); «Dije no a una fiesta» suma `partyBonus`. Una caída no resta.
+- Escalones cada 7 días de racha (`STEP`), ganados con la **mejor** racha. Con premio en `settings.milestones` (se reclama al llegar, sin pagar nada); si no, cofre (el último, doble): un comodín o una noche de series. Ciclo de 90 días.
+- **Sin dinero** (pedido de la persona): en ningún lado se muestran Bs ni precios. Los montos viejos (`value` de tipo `bs`, `price`, `partyBonus`) quedan guardados y ocultos por si algún día vuelven. Cada día "ok" suma horas o días (`value`); «Dije no a una fiesta» solo queda anotado. Una caída no resta.
+- En Ajustes → Hábitos hay sugerencias genéricas de un toque (`HABIT_SUGGESTIONS`, por ejemplo «Comer mucha sal»). Lo personal sigue entrando solo desde el teléfono.
 - Gran premio (`settings.grand`): se reclama desde su fecha o desde el último día del ciclo y, si tiene `weeks`, con esas semanas victoriosas (`src/lib/team.ts`: promedio de Bitácora y Val Q de 80 % o más).
 - **Insignias** (`src/lib/badges.ts`): cada bloque de 2 semanas con 80 % limpio de promedio sube un nivel (Bronce, Plata, Oro, Platino, Diamante, Leyenda). Un bloque perdido no quita nada.
 - **Ánimo del día** (`DayRecord.mood`, 1 a 5): un toque en Hoy; en Análisis se ve tu porcentaje limpio según tu ánimo.

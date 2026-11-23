@@ -4,7 +4,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { biometricSupport, prfWithBiometric, registerBiometric } from './biometric';
-import { APP_NAME, CYCLE_LENGTH, DEFAULT_MILESTONES, DEFAULT_TRIGGERS, MAX_HABITS, NEW_HABIT } from './config';
+import { APP_NAME, CYCLE_LENGTH, DEFAULT_MILESTONES, DEFAULT_TRIGGERS, MAX_HABITS, NEW_HABIT, type HabitTemplate } from './config';
 import {
   KDF_ITERATIONS,
   decryptBytes,
@@ -465,6 +465,14 @@ export const actions = {
     updateSettings((s) => {
       if (s.habits.length >= MAX_HABITS) return s;
       return { ...s, habits: [...s.habits, { ...NEW_HABIT, id: slugId(clean, new Set(s.habits.map((h) => h.id))), name: clean }] };
+    });
+  },
+
+  /** Agrega una sugerencia con su pregunta, botones y frase (un toque en Ajustes). */
+  addHabitTemplate(t: HabitTemplate) {
+    updateSettings((s) => {
+      if (s.habits.length >= MAX_HABITS || s.habits.some((h) => h.name.toLowerCase() === t.name.toLowerCase())) return s;
+      return { ...s, habits: [...s.habits, { ...structuredClone(t), id: slugId(t.name, new Set(s.habits.map((h) => h.id))) }] };
     });
   },
 

@@ -60,7 +60,6 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
   const rec = state.days[selected];
   const clean = isClean(state.days, selected, s.habits);
   const wild = wildcards(state);
-  const sv = savings(s, state.days, today);
   const [urge, setUrge] = useState(false);
   // Si la app se abrió desde el botón «Tengo un antojo» del widget, abre la urgencia.
   useEffect(() => {
@@ -224,7 +223,6 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
                   <Icon name={nextStep.kind === 'prize' ? 'gift' : 'sparkles'} size={14} />{' '}
                   {nextStep.kind === 'prize' ? nextStep.prize.name : nextStep.keys.length > 1 ? 'Cofre doble' : 'Cofre sorpresa'}
                 </span>
-                {nextStep.kind === 'prize' && nextStep.prize.price > 0 && <span>Bs {nextStep.prize.price}</span>}
               </div>
             )}
             {pill && <div className={`pill ${pill.cls}`}>{pill.text}</div>}
@@ -260,7 +258,7 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
               <article key={h.id} className={`vcard ${m ?? ''}`} aria-label={h.name}>
                 <div className="vcard-head">
                   <h3>{h.name}</h3>
-                  {h.value && h.value.amount > 0 && <span className="value-tag">{valueTag(h)}</span>}
+                  {h.value && h.value.amount > 0 && valueTag(h) && <span className="value-tag">{valueTag(h)}</span>}
                 </div>
                 {r && <HabitStats run={r} index={i} />}
                 <p className="q">{h.q}</p>
@@ -310,7 +308,6 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
           />
 
           <p className="fine">Marca cada noche antes de las 23:00. Una caída es información, no un fracaso: anota qué la disparó.</p>
-          {sv.bs > 0 && <p className="fine">Lo que no gastas se vuelve premio: tu ahorro paga tus escalones.</p>}
         </>
       )}
 
@@ -333,9 +330,10 @@ export function TodayScreen({ state, today, hasBio, selected, onSelect, onGo, on
   );
 }
 
+/** Lo que suma un día limpio (sin dinero: los Bs quedan guardados pero no se muestran). */
 function valueTag(h: Habit): string {
   const v = h.value!;
-  if (v.kind === 'bs') return `+Bs ${v.amount}/día`;
+  if (v.kind === 'bs') return '';
   if (v.kind === 'horas') return `+${formatHours(v.amount)}/día`;
   return `+${v.amount === 1 ? '1 día' : `${v.amount} días`}`;
 }
@@ -345,15 +343,12 @@ function SavingsCard({ state, today, selected, editable }: { state: AppState; to
   const sv = savings(s, state.days, today);
   const hasHours = s.habits.some((h) => h.value?.kind === 'horas');
   const party = Boolean(state.days[selected]?.party);
-  if (!s.habits.some((h) => h.value) && !s.partyBonus) return null;
+  const hasStats = hasHours || sv.dias.length > 0;
+  if (!hasStats && !s.partyBonus) return null;
   return (
-    <section className="card save-card" aria-label="Tu ahorro">
-      <div className="card-title">Tu ahorro</div>
+    <section className="card save-card" aria-label="Lo que recuperas">
+      <div className="card-title">Lo que recuperas</div>
       <div className="save-grid">
-        <div className="save-stat">
-          <b>Bs {sv.bs}</b>
-          <span>que no gastaste</span>
-        </div>
         {hasHours && (
           <div className="save-stat">
             <b>{formatHours(sv.horas)}</b>
@@ -380,11 +375,11 @@ function SavingsCard({ state, today, selected, editable }: { state: AppState; to
             haptic(12);
             if (!party) {
               celebrate('day');
-              toast(`+Bs ${s.partyBonus}. Decir no también es ganar.`, 'reward');
+              toast('Decir no también es ganar.', 'reward');
             }
           }}
         >
-          <Icon name="ban" size={18} /> {party ? `Dijiste no a una fiesta · +Bs ${s.partyBonus}` : `Dije no a una fiesta (+Bs ${s.partyBonus})`}
+          <Icon name="ban" size={18} /> {party ? 'Dijiste no a una fiesta ✓' : 'Dije no a una fiesta'}
         </button>
       )}
     </section>

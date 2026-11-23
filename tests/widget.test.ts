@@ -40,7 +40,8 @@ describe('widget v2 (discreto)', () => {
     const st = initialState({ startDate: START, habits, milestones: [{ day: 7, name: 'Premio privado', price: 50 }] });
     for (const d of rangeDates('2026-11-09', '2026-11-11')) st.days[d] = { states: { a: 'ok', b: 'ok' }, triggers: {} };
     const p = buildWidgetPayload(st, '2026-11-11');
-    expect(p).toMatchObject({ savedBs: 30, horas: 3, nextStep: 4, nextKind: 'premio', accent: 'verde' });
+    // Sin dinero: el widget ya no recibe Bs.
+    expect(p).toMatchObject({ savedBs: 0, horas: 3, nextStep: 4, nextKind: 'premio', accent: 'verde' });
     expect(JSON.stringify(p)).not.toContain('privado');
   });
 });

@@ -9,9 +9,9 @@ import { Icon } from './Icon';
 export const WHATS_NEW = {
   version: __APP_VERSION__,
   items: [
-    'Cada hábito con su racha y su % limpio, en Hoy (con su color).',
-    'En el widget de Rachas, tus hábitos por color, sin nombres: % limpio y días seguidos.',
-    'Una caída reinicia solo la racha de ese hábito; los demás siguen sumando.',
+    'Sin dinero: ya no hay Bs ni precios. Los premios se reclaman al llegar a su escalón.',
+    'Los cofres dan un comodín o una noche de series.',
+    'Ajustes → Hábitos: sugerencias de un toque, como «Comer mucha sal».',
   ],
 };
 
@@ -47,15 +47,15 @@ export function HowItWorks({ s, onClose }: { s: Settings; onClose: () => void })
         </section>
 
         <section className="card">
-          <div className="card-title">Tu ahorro</div>
+          <div className="card-title">Lo que recuperas</div>
           <ul>
-            <li>Cada día limpio de un hábito suma solo lo que le pusiste: Bs que no gastaste, horas que recuperaste o días (por ejemplo, de mente clara).</li>
+            <li>Cada día limpio de un hábito suma lo que le pusiste: horas que recuperaste o días (por ejemplo, de mente clara). Aquí no se cuenta dinero.</li>
             {s.partyBonus > 0 && (
               <li>
-                <b>«Dije no a una fiesta»</b> suma Bs {s.partyBonus} el día que lo tocas.
+                <b>«Dije no a una fiesta»</b> queda anotado el día que lo tocas.
               </li>
             )}
-            <li>Una caída no suma, pero tampoco te quita lo ahorrado.</li>
+            <li>Una caída no suma, pero tampoco te quita lo recuperado.</li>
           </ul>
         </section>
 
@@ -63,8 +63,8 @@ export function HowItWorks({ s, onClose }: { s: Settings; onClose: () => void })
           <div className="card-title">Escalones y premios</div>
           <ul>
             <li>
-              Cada {STEP} días de racha llegas a un escalón: un <b>premio con precio</b>, que pagas con tu ahorro, o un <b>cofre sorpresa</b> (+20 o +50 Bs, un comodín o
-              una noche de series). El último trae cofre doble.
+              Cada {STEP} días de racha llegas a un escalón: un <b>premio</b>, que reclamas al llegar, o un <b>cofre sorpresa</b> (un comodín o una noche de
+              series). El último trae cofre doble.
             </li>
             <li>Cuentan con tu mejor racha: si caes, lo ganado no se pierde.</li>
             <li>El comodín sale de los cofres y salva un día malo para tu racha.</li>
@@ -97,7 +97,7 @@ export function HowItWorks({ s, onClose }: { s: Settings; onClose: () => void })
           <div className="card-title">Botón de urgencia y ánimo</div>
           <ul>
             <li>
-              Cuando llegue el antojo, toca <b>«Tengo un antojo»</b>: ves tu gran premio, tu frase y tu ahorro, y respiras {URGE_MINUTES} minutos. El antojo sube, llega a su punto y
+              Cuando llegue el antojo, toca <b>«Tengo un antojo»</b>: ves tu gran premio, tu frase y tu racha, y respiras {URGE_MINUTES} minutos. El antojo sube, llega a su punto y
               baja.
             </li>
             <li>Marca tu ánimo con un toque. En Análisis ves cómo se relaciona con tus días limpios.</li>

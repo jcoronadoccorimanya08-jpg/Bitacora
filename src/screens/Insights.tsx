@@ -102,15 +102,15 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
         </p>
       </section>
 
-      {sv.byHabit.length > 0 && (
+      {(sv.byHabit.some((x) => x.kind !== 'bs') || sv.parties > 0) && (
         <>
-          <SectionTitle aside={`Bs ${sv.bs} en total`}>Lo que ganaste</SectionTitle>
+          <SectionTitle>Lo que recuperaste</SectionTitle>
           <section className="card">
-            {sv.byHabit.map((x) => (
+            {sv.byHabit.filter((x) => x.kind !== 'bs').map((x) => (
               <div key={x.habit.id} className="hstat">
                 <div className="hstat-head">
                   <b>{x.habit.name}</b>
-                  <span>{x.kind === 'bs' ? `Bs ${x.total}` : x.kind === 'horas' ? formatHours(x.total) : `${x.total} ${x.total === 1 ? 'día' : 'días'}${x.habit.value?.label ? ` · ${x.habit.value.label.toLowerCase()}` : ''}`}</span>
+                  <span>{x.kind === 'horas' ? formatHours(x.total) : `${x.total} ${x.total === 1 ? 'día' : 'días'}${x.habit.value?.label ? ` · ${x.habit.value.label.toLowerCase()}` : ''}`}</span>
                 </div>
               </div>
             ))}
@@ -118,9 +118,7 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
               <div className="hstat">
                 <div className="hstat-head">
                   <b>Dijiste no a una fiesta</b>
-                  <span>
-                    {sv.parties} × Bs {s.partyBonus}
-                  </span>
+                  <span>{sv.parties === 1 ? '1 vez' : `${sv.parties} veces`}</span>
                 </div>
               </div>
             )}
@@ -218,7 +216,7 @@ export function InsightsScreen({ state, today, onOpenDay }: { state: AppState; t
                 <div className="txt">
                   <b>{formatRange(c.start, c.end)}</b>
                   <span>
-                    {c.cleanDays} de {c.days} días limpios · mejor racha {c.bestStreak} · Bs {c.savedBs} · {formatHours(c.horas)} · {c.badges}{' '}
+                    {c.cleanDays} de {c.days} días limpios · mejor racha {c.bestStreak}{c.horas > 0 ? ` · ${formatHours(c.horas)}` : ''} · {c.badges}{' '}
                     {c.badges === 1 ? 'insignia' : 'insignias'} · {c.prizes} {c.prizes === 1 ? 'premio' : 'premios'}
                   </span>
                 </div>

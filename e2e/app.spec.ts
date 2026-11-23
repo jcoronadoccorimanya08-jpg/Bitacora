@@ -45,12 +45,12 @@ async function markClean(page: Page) {
 
 const nav = (page: Page, name: string) => page.locator('nav.nav').getByRole('button', { name }).click();
 
-test('configura con patrón, marca un día limpio, suma el ahorro y lo protege', async ({ page }) => {
+test('configura con patrón, marca un día limpio y lo protege (sin dinero)', async ({ page }) => {
   await setupManual(page);
   await markClean(page);
   await expect(page.getByRole('status').filter({ hasText: '¡Día limpio!' })).toBeVisible();
   await expect(page.getByLabel('Racha').locator('.big')).toHaveText('1');
-  await expect(page.getByLabel('Tu ahorro')).toContainText('Bs 10');
+  await expect(page.getByText(/Bs\s?\d/)).toHaveCount(0);
 
   // Al recargar pide el patrón; uno incorrecto no abre
   await page.reload();
@@ -110,18 +110,18 @@ test('botón de urgencia: muestra tu meta, respira 10 minutos y cuenta el antojo
   await expect(page.getByText('1 antojo superado con el botón de urgencia')).toBeVisible();
 });
 
-test('escalón de 7 días: premio con precio pagado con tu ahorro', async ({ page }) => {
+test('escalón de 7 días: el premio se reclama al llegar, sin dinero', async ({ page }) => {
   await setupManual(page);
   await nav(page, 'Premios');
   await expect(page.getByLabel('Escalón del día 35')).toContainText('cofre sorpresa');
   await expect(page.getByLabel('Escalón del día 84')).toContainText('cofre doble');
   const day7 = page.getByLabel('Premio del día 7');
-  await day7.getByRole('button', { name: 'Cambiar premio o precio' }).click();
+  await day7.getByRole('button', { name: 'Cambiar premio' }).click();
   await page.getByLabel('Premio', { exact: true }).fill('Premio de prueba');
-  await page.getByLabel('Precio en Bs').fill('30');
+  await expect(page.getByLabel('Precio en Bs')).toHaveCount(0);
   await page.getByRole('button', { name: 'Guardar' }).click();
   await expect(day7).toContainText('Premio de prueba');
-  await expect(day7).toContainText('Bs 30');
+  await expect(day7).not.toContainText('Bs');
 
   // Siete días limpios: del sábado 7 al viernes 13
   await page.clock.setFixedTime(new Date('2026-11-13T21:00:00-04:00'));
@@ -136,12 +136,11 @@ test('escalón de 7 días: premio con precio pagado con tu ahorro', async ({ pag
   await expect(page.getByRole('status').filter({ hasText: '¡Escalón de 7 días!' })).toBeVisible();
 
   await nav(page, 'Premios');
-  await expect(page.getByLabel('Tu ahorro disponible')).toContainText('70');
+  await expect(page.getByText(/Bs\s?\d/)).toHaveCount(0);
   await day7.getByRole('button', { name: 'Reclamar' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Reclamar' }).click();
   await expect(page.getByRole('status').filter({ hasText: '¡Premio de prueba! Te lo ganaste.' })).toBeVisible();
   await expect(day7).toContainText('Reclamado');
-  await expect(page.getByLabel('Tu ahorro disponible').locator('.fund-amount')).toContainText('40');
 });
 
 test('semana victoriosa: el promedio con Val Q cuenta para el gran premio', async ({ page }) => {
@@ -207,11 +206,12 @@ test('carga la configuración con premios, gran premio y «Dije no a una fiesta�
   const goal = page.getByRole('button', { name: 'Tu meta' });
   await expect(goal).toContainText('Gran premio de prueba');
   await expect(goal).toContainText('89');
-  await page.getByRole('button', { name: 'Dije no a una fiesta (+Bs 200)' }).click();
-  await expect(page.getByRole('status').filter({ hasText: '+Bs 200' })).toBeVisible();
+  await page.getByRole('button', { name: 'Dije no a una fiesta' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Decir no también es ganar.' })).toBeVisible();
   await page.getByRole('article', { name: 'Hábito dos' }).getByRole('button', { name: 'Sí' }).click();
-  await expect(page.getByLabel('Tu ahorro')).toContainText('Bs 200');
-  await expect(page.getByLabel('Tu ahorro')).toContainText('día de mente clara');
+  await expect(page.getByLabel('Lo que recuperas')).toContainText('día de mente clara');
+  // Sin dinero: los montos del archivo quedan guardados, pero no se muestran.
+  await expect(page.getByText(/Bs\s?\d/)).toHaveCount(0);
 });
 
 test('se puede pegar la configuración como texto', async ({ page }) => {

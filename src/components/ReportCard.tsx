@@ -61,7 +61,7 @@ export function ReportCard({ state, today, report, victories = 0 }: { state: App
           <div className="goal-eyebrow">Semana {wk}</div>
           <div className="card-title">{formatRange(start, end)}</div>
           <div className="muted" style={{ fontSize: 13.5 }}>
-            {clean} de {played.length || STEP} días limpios · Bs {sv.bs} · {formatHours(sv.horas)}
+            {clean} de {played.length || STEP} días limpios{sv.horas > 0 ? ` · ${formatHours(sv.horas)}` : ''}
           </div>
         </div>
         <div className="report-pct">

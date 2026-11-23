@@ -37,7 +37,7 @@ export interface WidgetFrame {
   days: WidgetDay[];
   /** La semana del ciclo en la que estás: número, inicio, días y días limpios. */
   week: { n: number; start: ISODate; len: number; won: number } | null;
-  /** Ahorro (Bs) y horas recuperadas, sin decir de qué. */
+  /** Horas recuperadas (savedBs queda en 0: ya no se muestra dinero). */
   savedBs: number;
   horas: number;
   /** Días de racha que faltan para el próximo escalón, y si es premio o cofre (sin el nombre). */
@@ -105,7 +105,7 @@ export function buildWidgetFrame(state: AppState, today: ISODate): WidgetFrame {
           won: today < wk.start ? 0 : rangeDates(wk.start, minDate(ref, wk.end)).filter((d) => isClean(state.days, d, s.habits)).length,
         }
       : null,
-    savedBs: sv.bs,
+    savedBs: 0, // sin dinero: el widget ya no muestra Bs
     horas: sv.horas,
     nextStep: next === null ? null : next - st.run,
     nextKind: stepInfo ? (stepInfo.kind === 'prize' ? 'premio' : 'cofre') : null,

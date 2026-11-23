@@ -8,19 +8,18 @@ import { formatLong, formatShort, localDateOf, plural, type ISODate } from '../l
 import { badgeBlocks, BADGE_PCT } from '../lib/badges';
 import { streakStats } from '../lib/engine';
 import { haptic, toast } from '../lib/feedback';
-import { grandStatus, pendingChests, steps, wallet, wildcards, withClaims, type Step } from '../lib/rewards';
+import { grandStatus, pendingChests, steps, wildcards, withClaims, type Step } from '../lib/rewards';
 import { actions } from '../lib/store';
 import { OTHER_NAME, VICTORY_PCT, teamFor } from '../lib/team';
 import type { AppState } from '../lib/types';
 
 type Prize = Extract<Step, { kind: 'prize' }>;
-type Claim = { key: string; name: string; price: number } | null;
+type Claim = { key: string; name: string } | null;
 
 export function RewardsScreen({ state, today }: { state: AppState; today: ISODate }) {
   const s = state.settings;
   const st = streakStats(s, state.days, today);
   const list = withClaims(steps(s, st.best), state);
-  const w = wallet(s, state, today);
   const wild = wildcards(state);
   const chests = pendingChests(list, state);
   const team = teamFor(s, state.days, today);
@@ -39,7 +38,7 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
   const history = [
     ...Object.entries(state.claims).map(([k, c]) => ({
       at: c.claimedAt,
-      text: k === 'grand' ? `Gran premio: ${s.grand?.name ?? 'reclamado'} (Bs ${c.price})` : `Día ${k}: ${s.milestones.find((m) => String(m.day) === k)?.name ?? 'premio'} (Bs ${c.price})`,
+      text: k === 'grand' ? `Gran premio: ${s.grand?.name ?? 'reclamado'}` : `Día ${k}: ${s.milestones.find((m) => String(m.day) === k)?.name ?? 'premio'}`,
     })),
     ...Object.entries(state.chests).map(([k, c]) => ({ at: c.openedAt, text: `Cofre del día ${k.replace(/[ab]$/, '')}: ${CHEST_LABEL[c.outcome]}` })),
   ].sort((a, b) => (a.at < b.at ? 1 : -1));
@@ -48,37 +47,8 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
     <>
       <ScreenHeader eyebrow="Premios" title="Tus escalones" subtitle="Cada 7 días de racha: un premio o un cofre sorpresa." />
 
-      <section className="card fund" aria-label="Tu ahorro disponible">
-        <div className="fund-top">
-          <span className="fund-icon">
-            <Icon name="wallet" size={26} />
-          </span>
-          <div>
-            <div className="fund-amount">
-              <small>Bs</small> {w.balance}
-            </div>
-            <div className="muted">disponible para tus premios</div>
-          </div>
-        </div>
-        <div className="wallet-break">
-          <div>
-            <span>Lo que no gastaste</span>
-            <b>Bs {w.saved}</b>
-          </div>
-          {w.bonus > 0 && (
-            <div>
-              <span>Bonos de cofres</span>
-              <b>+ Bs {w.bonus}</b>
-            </div>
-          )}
-          {w.spent > 0 && (
-            <div>
-              <span>Premios reclamados</span>
-              <b>− Bs {w.spent}</b>
-            </div>
-          )}
-        </div>
-        <div className="fund-row">
+      <section className="card fund" aria-label="Tus comodines">
+        <div className="fund-row" style={{ marginTop: 0 }}>
           <span>
             <Icon name="sparkles" size={16} /> Comodines: <b>{wild.available}</b>
           </span>
@@ -97,7 +67,7 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
               <div className="reward-dates">
                 {g.kind === 'claimed'
                   ? `Reclamado el ${formatShort(localDateOf(g.claimedAt))}`
-                  : `${formatLong(g.target)}${s.grand.price ? ` · Bs ${s.grand.price}` : ''}`}
+                  : formatLong(g.target)}
               </div>
             </div>
             {g.kind === 'locked' && g.daysLeft > 0 && <span className="badge active">Faltan {g.daysLeft}</span>}
@@ -120,14 +90,6 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
               </p>
             </>
           )}
-          {g.kind === 'locked' && s.grand.price ? (
-            <div className="reward-progress">
-              <div className="bar">
-                <i style={{ width: `${Math.min(100, Math.round((Math.max(0, w.balance) / s.grand.price) * 100))}%` }} />
-              </div>
-              Bs {Math.max(0, w.balance)}/{s.grand.price}
-            </div>
-          ) : null}
           {g.kind === 'locked' && g.daysLeft <= 0 && (
             <p className="muted" style={{ marginTop: 8, fontSize: 13.5 }}>
               Te faltaron {plural(g.required - g.victories, 'semana victoriosa', 'semanas victoriosas')}. Lo que lograste se queda contigo: va de nuevo en tu
@@ -139,10 +101,9 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
               type="button"
               className="btn gold block"
               style={{ marginTop: 12 }}
-              disabled={(s.grand.price ?? 0) > w.balance}
-              onClick={() => setConfirm({ key: 'grand', name: s.grand!.name, price: s.grand!.price ?? 0 })}
+              onClick={() => setConfirm({ key: 'grand', name: s.grand!.name })}
             >
-              <Icon name="trophy" size={18} /> {(s.grand.price ?? 0) > w.balance ? `Te faltan Bs ${(s.grand.price ?? 0) - w.balance}` : 'Reclamar'}
+              <Icon name="trophy" size={18} /> Reclamar
             </button>
           )}
         </section>
@@ -175,10 +136,9 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
               key={step.day}
               step={step}
               run={st.run}
-              balance={w.balance}
               claimedAt={state.claims[String(step.day)]?.claimedAt}
               onEdit={() => setEditing(step.day)}
-              onClaim={() => setConfirm({ key: String(step.day), name: step.prize.name, price: step.prize.price })}
+              onClaim={() => setConfirm({ key: String(step.day), name: step.prize.name })}
             />
           )
         ) : (
@@ -188,7 +148,7 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
                 <div className="reward-title">
                   <Icon name="sparkles" size={17} /> Día {step.day} · {step.keys.length > 1 ? 'cofre doble' : 'cofre sorpresa'}
                 </div>
-                <div className="reward-dates">+20 o +50 Bs, un comodín o una noche de series</div>
+                <div className="reward-dates">Un comodín o una noche de series</div>
               </div>
               <span className={`badge ${step.earned ? 'won' : ''}`}>{step.earned ? 'Ganado' : `Faltan ${Math.max(0, step.day - st.run)}`}</span>
             </div>
@@ -235,11 +195,11 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
         open={confirm !== null}
         onClose={() => setConfirm(null)}
         title={confirm ? `Reclamar «${confirm.name}»` : ''}
-        body={confirm ? `Se descuentan Bs ${confirm.price} de tu ahorro. Te quedan Bs ${w.balance - confirm.price}. ¡Disfrútalo, te lo ganaste!` : ''}
+        body={confirm ? '¡Disfrútalo, te lo ganaste!' : ''}
         confirmLabel="Reclamar"
         onConfirm={() => {
           if (!confirm) return;
-          actions.claim(confirm.key, confirm.price);
+          actions.claim(confirm.key, 0);
           celebrate('week');
           haptic([20, 60, 20]);
           toast(`¡${confirm.name}! Te lo ganaste.`, 'reward');
@@ -249,9 +209,8 @@ export function RewardsScreen({ state, today }: { state: AppState; today: ISODat
   );
 }
 
-function PrizeRow(props: { step: Prize; run: number; balance: number; claimedAt?: string; onEdit: () => void; onClaim: () => void }) {
-  const { step, run, balance, claimedAt, onEdit, onClaim } = props;
-  const short = step.prize.price - balance;
+function PrizeRow(props: { step: Prize; run: number; claimedAt?: string; onEdit: () => void; onClaim: () => void }) {
+  const { step, run, claimedAt, onEdit, onClaim } = props;
   const status = step.claimed ? 'claimed' : step.earned ? 'won' : 'active';
   return (
     <article className={`reward ${step.earned ? 'won' : ''}`} aria-label={`Premio del día ${step.day}`}>
@@ -265,7 +224,6 @@ function PrizeRow(props: { step: Prize; run: number; balance: number; claimedAt?
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          {step.prize.price > 0 && <div className="step-price">Bs {step.prize.price}</div>}
           <span className={`badge ${status}`}>{step.claimed ? 'Reclamado' : step.earned ? 'Ganado' : `Faltan ${Math.max(0, step.day - run)}`}</span>
         </div>
       </div>
@@ -274,12 +232,12 @@ function PrizeRow(props: { step: Prize; run: number; balance: number; claimedAt?
           <Icon name="check" size={16} /> Reclamado{claimedAt ? ` el ${formatShort(localDateOf(claimedAt))}` : ''}
         </div>
       ) : step.earned ? (
-        <button type="button" className="btn primary block" style={{ marginTop: 12 }} disabled={short > 0} onClick={onClaim}>
-          <Icon name="gift" size={18} /> {short > 0 ? `Te faltan Bs ${short} de ahorro` : 'Reclamar'}
+        <button type="button" className="btn primary block" style={{ marginTop: 12 }} onClick={onClaim}>
+          <Icon name="gift" size={18} /> Reclamar
         </button>
       ) : (
         <button type="button" className="link-btn" onClick={onEdit}>
-          <Icon name="pencil" size={14} /> Cambiar premio o precio
+          <Icon name="pencil" size={14} /> Cambiar premio
         </button>
       )}
     </article>
@@ -288,19 +246,11 @@ function PrizeRow(props: { step: Prize; run: number; balance: number; claimedAt?
 
 function PrizeEditor({ step, onDone }: { step: Prize; onDone: () => void }) {
   const [name, setName] = useState(step.prize.name);
-  const [price, setPrice] = useState(String(step.prize.price));
   return (
     <article className="reward" aria-label={`Editar premio del día ${step.day}`}>
       <div className="reward-title">Día {step.day}</div>
       <div className="step-edit">
         <input className="field" value={name} maxLength={60} aria-label="Premio" onChange={(e) => setName(e.target.value)} />
-        <input
-          className="field"
-          value={price}
-          inputMode="numeric"
-          aria-label="Precio en Bs"
-          onChange={(e) => setPrice(e.target.value.replace(/\D/g, '').slice(0, 5))}
-        />
       </div>
       <div className="btn-row">
         <button type="button" className="btn" onClick={onDone}>
@@ -311,7 +261,8 @@ function PrizeEditor({ step, onDone }: { step: Prize; onDone: () => void }) {
           className="btn primary"
           disabled={!name.trim()}
           onClick={() => {
-            actions.setMilestone(step.day, { name: name.trim(), price: Number(price || 0) });
+            // El precio guardado se conserva (oculto), por si algún día vuelve.
+            actions.setMilestone(step.day, { name: name.trim(), price: step.prize.price });
             toast('Premio guardado.');
             onDone();
           }}

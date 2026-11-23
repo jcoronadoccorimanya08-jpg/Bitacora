@@ -1,4 +1,4 @@
-/** Escalones de la racha: premios con precio pagados con tu ahorro, cofres y comodines. */
+/** Escalones de la racha: premios (se reclaman al llegar, sin dinero), cofres y comodines. */
 import { STEP } from './config';
 import { diffDays, type ISODate } from './dates';
 import { cycleEnd, milestones, savings } from './engine';
@@ -6,11 +6,9 @@ import type { AppState, ChestOutcome, Milestone, Settings } from './types';
 
 export const CHEST_BONUS: Record<ChestOutcome, number> = { bs20: 20, bs50: 50, wildcard: 0, series: 0 };
 
+/** Sin dinero: un cofre da un comodín o una noche de series. */
 export function chestFromRoll(roll: number): ChestOutcome {
-  if (roll < 0.35) return 'bs20';
-  if (roll < 0.55) return 'bs50';
-  if (roll < 0.8) return 'wildcard';
-  return 'series';
+  return roll < 0.5 ? 'wildcard' : 'series';
 }
 
 export type Step =

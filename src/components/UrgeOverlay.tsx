@@ -3,7 +3,7 @@ import { URGE_MINUTES } from '../lib/config';
 import { type ISODate } from '../lib/dates';
 import { streakStats } from '../lib/engine';
 import { haptic } from '../lib/feedback';
-import { grandStatus, nextPrize, steps, wallet, withClaims } from '../lib/rewards';
+import { grandStatus, nextPrize, steps, withClaims } from '../lib/rewards';
 import { teamFor } from '../lib/team';
 import type { AppState } from '../lib/types';
 import { Icon } from './Icon';
@@ -23,7 +23,6 @@ export function UrgeOverlay({ state, today, onClose, onDone }: { state: AppState
   const withPhrase = useMemo(() => s.habits.filter((h) => h.phrase.trim()), [s.habits]);
   const [pick, setPick] = useState(withPhrase[0]?.id ?? '');
   const st = streakStats(s, state.days, today);
-  const w = wallet(s, state, today);
   const g = grandStatus(s, state, today, teamFor(s, state.days, today).victories);
   const prize = nextPrize(withClaims(steps(s, st.best), state));
 
@@ -71,7 +70,6 @@ export function UrgeOverlay({ state, today, onClose, onDone }: { state: AppState
                 : g.daysLeft > 0
                   ? `Faltan ${g.daysLeft} ${g.daysLeft === 1 ? 'día' : 'días'}${g.required ? ` · ${g.victories} de ${g.required} semanas victoriosas` : ''}`
                   : `${g.victories} de ${g.required} semanas victoriosas`}
-              {s.grand.price ? ` · Bs ${s.grand.price}` : ''}
             </span>
           </div>
         ) : prize ? (
@@ -101,7 +99,7 @@ export function UrgeOverlay({ state, today, onClose, onDone }: { state: AppState
         )}
 
         <p className="urge-save">
-          Llevas <b>{st.run}</b> {st.run === 1 ? 'día' : 'días'} de racha y <b>Bs {w.saved}</b> ahorrados. No los regales: en {URGE_MINUTES} minutos esto
+          Llevas <b>{st.run}</b> {st.run === 1 ? 'día' : 'días'} de racha. No la regales: en {URGE_MINUTES} minutos esto
           pasa.
         </p>
 

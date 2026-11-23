@@ -15,15 +15,15 @@ import {
   triggerCounts,
 } from './engine';
 import { badgeBlocks, earnedTiers } from './badges';
-import { grandStatus, nextPrize, steps, wallet, withClaims } from './rewards';
+import { grandStatus, nextPrize, steps, withClaims } from './rewards';
 import type { AppState } from './types';
 
 const DIAS = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
-/** «Bs 120 · 4 h · 6 días de mente clara» (solo lo que tenga valor). */
+/** «4 h · 6 días de mente clara» (sin dinero; solo lo que tenga valor). */
 export function savingsLine(state: AppState, today: ISODate): string {
   const sv = savings(state.settings, state.days, today);
-  const parts = [`Bs ${sv.bs}`];
+  const parts: string[] = [];
   if (sv.horas > 0 || state.settings.habits.some((h) => h.value?.kind === 'horas')) parts.push(`${formatHours(sv.horas)} recuperadas`);
   for (const d of sv.dias) parts.push(`${d.days} ${d.days === 1 ? 'día' : 'días'} de ${d.label.toLowerCase()}`);
   return parts.join(' · ');
@@ -44,15 +44,14 @@ export function buildReport(state: AppState, today: ISODate, victories = 0): str
   const list = withClaims(steps(s, st.best), state);
   const prize = nextPrize(list);
   const sv = savings(s, state.days, today);
-  const w = wallet(s, state, today);
   const lines: string[] = [];
 
   lines.push(`REPORTE · Bitácora · día ${day}/${s.cycleLength} · ${today}`);
   const next = nextMilestone(st.run, s.cycleLength);
   lines.push(`Racha: ${st.run} días · mejor ${st.best}${next ? ` · próximo escalón: día ${next}` : ''}`);
   if (st.misses === 1) lines.push('Ayer no fue un día limpio: hoy decide si la racha sigue.');
-  if (s.habits.some((h) => h.value) || s.partyBonus > 0)
-    lines.push(`Ahorro: ${savingsLine(state, today)}${sv.parties ? ` · ${sv.parties} ${sv.parties === 1 ? 'fiesta rechazada' : 'fiestas rechazadas'}` : ''} · disponible Bs ${w.balance}`);
+  const recovered = [savingsLine(state, today), sv.parties ? `${sv.parties} ${sv.parties === 1 ? 'fiesta rechazada' : 'fiestas rechazadas'}` : ''].filter(Boolean).join(' · ');
+  if (recovered) lines.push(`Recuperado: ${recovered}`);
   if (state.urges) lines.push(`Antojos superados con el botón de urgencia: ${state.urges}`);
   const tiers = earnedTiers(badgeBlocks(s, state.days, today));
   lines.push(`Insignias: ${tiers.length ? tiers.join(', ') : 'todavía ninguna'}`);
@@ -73,12 +72,12 @@ export function buildReport(state: AppState, today: ISODate, victories = 0): str
     );
   }
 
-  if (prize) lines.push(`Próximo premio (día ${prize.day}): ${prize.prize.name} · Bs ${prize.prize.price}`);
+  if (prize) lines.push(`Próximo premio (día ${prize.day}): ${prize.prize.name}`);
   const g = grandStatus(s, state, today, victories);
   if (s.grand && g.kind !== 'none') {
     const status = g.kind === 'claimed' ? 'reclamado' : g.kind === 'available' ? 'disponible' : g.daysLeft > 0 ? `faltan ${g.daysLeft} días` : 'bloqueado';
     const weeks = g.kind === 'available' || g.kind === 'locked' ? (g.required ? ` · ${g.victories} de ${g.required} semanas victoriosas` : '') : '';
-    lines.push(`Gran premio: ${s.grand.name}${s.grand.price ? ` (Bs ${s.grand.price})` : ''} · ${status}${weeks}`);
+    lines.push(`Gran premio: ${s.grand.name} · ${status}${weeks}`);
   }
   if (phase === 'finished') lines.push(`Ciclo terminado el ${cycleEnd(s)}.`);
   return lines.join('\n');

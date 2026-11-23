@@ -62,10 +62,10 @@ describe('ahorro disponible y gran premio', () => {
 });
 
 describe('cofres y comodines', () => {
-  it('reparte el cofre según la tirada', () => {
-    expect(chestFromRoll(0)).toBe('bs20');
-    expect(chestFromRoll(0.4)).toBe('bs50');
-    expect(chestFromRoll(0.6)).toBe('wildcard');
+  it('sin dinero: el cofre da un comodín o una noche de series', () => {
+    expect(chestFromRoll(0)).toBe('wildcard');
+    expect(chestFromRoll(0.4)).toBe('wildcard');
+    expect(chestFromRoll(0.6)).toBe('series');
     expect(chestFromRoll(0.9)).toBe('series');
   });
 

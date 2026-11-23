@@ -28,12 +28,13 @@ export const NEW_HABIT: HabitTemplate = { name: '', q: '¿Día limpio?', ok: 'Li
 /** Sugerencias genéricas. Lo personal se carga desde un archivo o texto propio, nunca desde el código. */
 export const HABIT_SUGGESTIONS: HabitTemplate[] = [
   { name: 'Procrastinación', q: '¿Empecé mi tarea principal sin posponerla?', ok: 'Cumplí', fail: 'Postergué', phrase: 'Dos minutos. Solo empiezo.' },
-  { name: 'Cigarro', q: '¿Día sin fumar?', ok: 'Limpio', fail: 'Caí', phrase: 'No fumo.', value: { kind: 'bs', amount: 10 } },
-  { name: 'Alcohol', q: '¿Día sin alcohol?', ok: 'Limpio', fail: 'Caí', phrase: 'Ya lo decidí antes de llegar.', value: { kind: 'bs', amount: 20 } },
+  { name: 'Cigarro', q: '¿Día sin fumar?', ok: 'Limpio', fail: 'Caí', phrase: 'No fumo.' },
+  { name: 'Alcohol', q: '¿Día sin alcohol?', ok: 'Limpio', fail: 'Caí', phrase: 'Ya lo decidí antes de llegar.' },
   { name: 'Comer con pantallas', q: '¿Comí sin series ni videos?', ok: 'Sin pantalla', fail: 'Con pantalla', phrase: 'La serie es premio, no acompañante.', value: { kind: 'horas', amount: 1 } },
   { name: 'Redes sociales', q: '¿Usé redes solo en mi horario?', ok: 'Cumplí', fail: 'Me pasé', phrase: 'Primero lo importante.', value: { kind: 'horas', amount: 1 } },
   { name: 'Comida chatarra', q: '¿Día sin comida chatarra?', ok: 'Limpio', fail: 'Caí', phrase: 'Como para rendir.' },
   { name: 'Azúcar', q: '¿Día sin azúcar añadida?', ok: 'Limpio', fail: 'Caí', phrase: 'El antojo pasa en diez minutos.' },
+  { name: 'Comer mucha sal', q: '¿Comí sin sal extra ni comida muy salada?', ok: 'Cumplí', fail: 'Me pasé', phrase: 'Mi presión vale más que el sabor.' },
   { name: 'Videojuegos', q: '¿Jugué solo en mi horario?', ok: 'Cumplí', fail: 'Me pasé', phrase: 'Juego cuando terminé, no para no empezar.', value: { kind: 'horas', amount: 1 } },
 ];
 
@@ -46,8 +47,9 @@ export const DEFAULT_MILESTONES: Milestone[] = [
 ];
 
 export const CHEST_LABEL: Record<ChestOutcome, string> = {
-  bs20: '+20 Bs a tu ahorro',
-  bs50: '+50 Bs a tu ahorro',
+  // Cofres viejos (de cuando había dinero): se muestran como sorpresa.
+  bs20: 'Una sorpresa',
+  bs50: 'Una sorpresa',
   wildcard: 'Un comodín',
   series: 'Una noche de series (sin comer frente a la pantalla)',
 };

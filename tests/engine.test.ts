@@ -176,9 +176,10 @@ describe('análisis', () => {
     expect(text).toContain('día 3/90');
     expect(text).toContain('Racha: 2 días · mejor 2 · próximo escalón: día 7');
     expect(text).toContain('Disparadores (7 días): Estrés (1)');
-    expect(text).toContain('Próximo premio (día 7): Comer carne · Bs 100');
+    expect(text).toContain('Próximo premio (día 7): Comer carne');
+    expect(text).not.toContain('Bs');
     expect(text).toContain('Antojos superados con el botón de urgencia: 2');
-    expect(text).toContain('Gran premio: Gran premio (Bs 500) · faltan 87 días');
+    expect(text).toContain('Gran premio: Gran premio · faltan 87 días');
     expect(text).not.toContain('Ahorro:');
   });
 });

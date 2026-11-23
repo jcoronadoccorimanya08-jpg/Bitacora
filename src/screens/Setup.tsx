@@ -113,8 +113,8 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
               <Icon name="wallet" />
             </span>
             <div>
-              <b>Tu ahorro crece solo</b>
-              <span>Cada día limpio suma lo que no gastaste, el tiempo que recuperaste y tus días limpios.</span>
+              <b>Lo que recuperas crece solo</b>
+              <span>Cada día limpio suma el tiempo que recuperaste y tus días limpios.</span>
             </div>
           </li>
           <li>
@@ -123,7 +123,7 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
             </span>
             <div>
               <b>Un premio cada 7 días</b>
-              <span>Premios con precio, pagados con tu ahorro, y cofres sorpresa con comodines.</span>
+              <span>Premios que reclamas al llegar a cada escalón y cofres sorpresa con comodines.</span>
             </div>
           </li>
           <li>
@@ -185,8 +185,8 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
               <li key={h.id}>
                 <span>
                   {i + 1}. {h.name}
-                  {h.value && h.value.amount > 0 && (
-                    <small className="muted"> · +{h.value.kind === 'bs' ? `Bs ${h.value.amount}` : h.value.kind === 'horas' ? `${h.value.amount}\u00a0h` : `${h.value.amount} día`}</small>
+                  {h.value && h.value.amount > 0 && h.value.kind !== 'bs' && (
+                    <small className="muted"> · +{h.value.kind === 'horas' ? `${h.value.amount}\u00a0h` : `${h.value.amount} día`}</small>
                   )}
                 </span>
                 <button type="button" className="icon-btn" aria-label={`Subir ${h.name}`} disabled={i === 0} onClick={() => moveUp(i)}>
@@ -201,10 +201,10 @@ export function Setup({ today, updateBanner }: { today: ISODate; updateBanner?: 
         )}
         {extras && (extras.milestones.length > 0 || extras.grand) && (
           <p className="fine" style={{ textAlign: 'left' }}>
-            {extras.milestones.length ? `${extras.milestones.length} premios con precio` : ''}
+            {extras.milestones.length ? `${extras.milestones.length} premios` : ''}
             {extras.milestones.length && extras.grand ? ' · ' : ''}
             {extras.grand ? `gran premio: ${extras.grand.name}` : ''}
-            {extras.partyBonus ? ` · «Dije no a una fiesta» +Bs ${extras.partyBonus}` : ''}
+            {extras.partyBonus ? ' · «Dije no a una fiesta»' : ''}
           </p>
         )}
         {habits.length < MAX_HABITS && (
