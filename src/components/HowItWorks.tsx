@@ -9,9 +9,8 @@ import { Icon } from './Icon';
 export const WHATS_NEW = {
   version: __APP_VERSION__,
   items: [
-    'Sin dinero: ya no hay Bs ni precios. Los premios se reclaman al llegar a su escalón.',
-    'Los cofres dan un comodín o una noche de series.',
-    'Ajustes → Hábitos: sugerencias de un toque, como «Comer mucha sal».',
+    'Celular ↔ tablet: en Ajustes, «Pasar a mi otro dispositivo» (con Quick Share) y en el otro «Recibir»: queda igual.',
+    'Usa el mismo patrón en tus dos dispositivos para que sea directo.',
   ],
 };
 

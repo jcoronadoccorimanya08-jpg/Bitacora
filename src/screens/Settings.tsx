@@ -347,6 +347,26 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
         </Item>
       </div>
 
+      <SectionTitle>📲 Celular ↔ tablet</SectionTitle>
+      {!test && (
+        <div className="group">
+          <div className="item col">
+            <div className="txt">
+              <b>Lo mismo en tus dos dispositivos</b>
+              <span>En el dispositivo donde anotas, toca «Pasar» y elige tu otro dispositivo en Quick Share. En el otro, toca «Recibir», elige el archivo (queda en Descargas) y dibuja tu patrón: queda igual. Recibir reemplaza lo que había en ese dispositivo.</span>
+            </div>
+            <div className="stack" style={{ marginTop: 10 }}>
+              <button type="button" className="btn primary block" onClick={() => void doBackup(shareFiles ? 'share' : 'download')}>
+                📲 Pasar a mi otro dispositivo
+              </button>
+              <button type="button" className="btn block" onClick={() => fileRef.current?.click()}>
+                📥 Recibir de mi otro dispositivo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SectionTitle>Respaldo</SectionTitle>
       {test ? (
         <div className="group">
