@@ -9,7 +9,9 @@ import { Icon } from './Icon';
 export const WHATS_NEW = {
   version: __APP_VERSION__,
   items: [
-    'Celular ↔ tablet, solito: en Ajustes crea tu código de sincronización y pon el mismo en tu otro dispositivo. Todo se sincroniza cifrado.',
+    'Sincronización más segura: si cambias algo en el celular y en la tablet a la vez, ahora se juntan los dos cambios en vez de pisarse.',
+    'Al vincular un dispositivo que ya tiene datos, te pregunta cuáles se quedan, y guarda una copia para «Deshacer».',
+    'Si escribes mal el código, te avisa. Y recuperar un respaldo ya no apaga la sincronización.',
   ],
 };
 

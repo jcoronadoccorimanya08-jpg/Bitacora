@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SyncCard } from '../components/SyncCard';
-import { linkSync, sync, unlinkSync } from '../lib/syncSetup';
+import { syncCardProps } from '../lib/syncSetup';
 import { HowItWorks } from '../components/HowItWorks';
 import { Icon } from '../components/Icon';
 import { PatternPad } from '../components/PatternPad';
@@ -350,7 +350,7 @@ export function SettingsScreen({ state, today, hasBio }: { state: AppState; toda
       </div>
 
       <SectionTitle>☁️ Celular ↔ tablet</SectionTitle>
-      <SyncCard code={state.settings.syncCode} onSet={linkSync} onOff={unlinkSync} onNow={() => void sync.syncNow()} />
+      <SyncCard code={state.settings.syncCode} {...syncCardProps} />
 
       <SectionTitle>Respaldo</SectionTitle>
       {test ? (

@@ -17,7 +17,7 @@ function fakeFetch(_url: string, init: { body: string }) {
 }
 
 /** Un «dispositivo»: su propio estado y sus propios metadatos (localStorage separado). */
-function device<S extends { settings: { syncCode?: string } }>(app: string, initial: S, merge?: (l: S, r: S) => S) {
+function device<S extends { settings: { syncCode?: string } }>(app: string, initial: S, merge?: (l: S, r: S) => S, extra: { additive?: string[]; hasData?: (s: S) => boolean } = {}) {
   let state = initial;
   const store = new Map<string, string>();
   const ls = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
@@ -41,6 +41,7 @@ function device<S extends { settings: { syncCode?: string } }>(app: string, init
         for (const l of listeners) l(state, true);
       },
       merge,
+      ...extra,
       onCommit: (cb) => {
         listeners.add(cb);
         return () => listeners.delete(cb);
@@ -72,6 +73,9 @@ function device<S extends { settings: { syncCode?: string } }>(app: string, init
         await sync.syncNow();
       }),
     now: () => run(() => sync.syncNow()),
+    choose: (pick: 'cloud' | 'mine') => run(() => sync.choose(pick)),
+    undo: () => run(() => sync.undo()),
+    exists: (c: string) => sync.exists(c),
   };
 }
 
@@ -153,5 +157,71 @@ describe('dos dispositivos', () => {
     expect(cel.state.days).toEqual({ lun: 'tablet', mar: 'celular' });
     await tab.now();
     expect(tab.state.days).toEqual({ lun: 'tablet', mar: 'celular' });
+  });
+  it('si los dos anotan gastos a la vez, se juntan y los saldos restan los dos', async () => {
+    type B = { settings: { syncCode?: string }; accounts: { id: string; balance: number }[]; expenses: { id: string; amount: number }[] };
+    vi.setSystemTime(new Date('2026-11-25T10:00:00Z'));
+    const start: B = { settings: {}, accounts: [{ id: 'efe', balance: 500 }], expenses: [] };
+    const cel = device<B>('bf', start, undefined, { additive: ['balance'] });
+    const tab = device<B>('bf', { settings: {}, accounts: [], expenses: [] }, undefined, { additive: ['balance'] });
+    await cel.link(code);
+    await tab.link(code);
+    expect(tab.state.accounts[0]!.balance).toBe(500);
+    // Los dos anotan sin haberse visto.
+    vi.setSystemTime(new Date('2026-11-25T10:01:00Z'));
+    await cel.edit({ ...cel.state, accounts: [{ id: 'efe', balance: 473 }], expenses: [{ id: 'a', amount: 27 }] });
+    vi.setSystemTime(new Date('2026-11-25T10:02:00Z'));
+    await tab.edit({ ...tab.state, accounts: [{ id: 'efe', balance: 455 }], expenses: [{ id: 'b', amount: 45 }] });
+    await cel.now();
+    await tab.now();
+    await cel.now();
+    for (const d of [cel, tab]) {
+      expect(d.state.expenses.map((e) => e.id).sort()).toEqual(['a', 'b']);
+      expect(d.state.accounts[0]!.balance).toBe(428);
+    }
+    // Y un borrado en un lado también llega al otro.
+    vi.setSystemTime(new Date('2026-11-25T10:03:00Z'));
+    await tab.edit({ ...tab.state, accounts: [{ id: 'efe', balance: 455 }], expenses: tab.state.expenses.filter((e) => e.id !== 'a') });
+    await tab.now();
+    await cel.now();
+    expect(cel.state.expenses.map((e) => e.id)).toEqual(['b']);
+    expect(cel.state.accounts[0]!.balance).toBe(455);
+  });
+  it('al vincular con datos propios, pregunta; «la nube» guarda lo de aquí para deshacer', async () => {
+    type D = { settings: { syncCode?: string }; days: Record<string, number> };
+    const hasData = (s: D) => Object.keys(s.days).length > 0;
+    vi.setSystemTime(new Date('2026-11-25T10:00:00Z'));
+    const tab = device<D>('vq', { settings: {}, days: { lun: 1 } }, undefined, { hasData });
+    const cel = device<D>('vq', { settings: {}, days: { mar: 2 } }, undefined, { hasData });
+    await tab.link(code);
+    await cel.link(code);
+    // No pisó nada: cada uno sigue con lo suyo hasta que elijas.
+    expect(cel.state.days).toEqual({ mar: 2 });
+    await cel.now();
+    expect(cel.state.days).toEqual({ mar: 2 });
+    await cel.choose('cloud');
+    expect(cel.state.days).toEqual({ lun: 1 });
+    await cel.undo();
+    expect(cel.state.days).toEqual({ mar: 2 });
+    await tab.now();
+    expect(tab.state.days).toEqual({ mar: 2 });
+  });
+  it('«los de este dispositivo» manda lo de aquí a la nube', async () => {
+    type D = { settings: { syncCode?: string }; days: Record<string, number> };
+    const hasData = (s: D) => Object.keys(s.days).length > 0;
+    vi.setSystemTime(new Date('2026-11-25T10:00:00Z'));
+    const tab = device<D>('vq', { settings: {}, days: { lun: 1 } }, undefined, { hasData });
+    const cel = device<D>('vq', { settings: {}, days: { mar: 2 } }, undefined, { hasData });
+    await tab.link(code);
+    await cel.link(code);
+    await cel.choose('mine');
+    await tab.now();
+    expect(tab.state.days).toEqual({ mar: 2 });
+  });
+  it('avisa si el código no existe (mal escrito)', async () => {
+    const cel = device<St>('x', { settings: {}, n: 1 });
+    expect(await cel.exists('tigre-luna-mango-rio-sol-9999')).toBe(false);
+    await cel.link(code);
+    expect(await cel.exists(code)).toBe(true);
   });
 });

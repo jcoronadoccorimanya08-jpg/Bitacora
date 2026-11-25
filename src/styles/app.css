@@ -2946,3 +2946,15 @@ dialog::backdrop {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   word-break: break-word;
 }
+
+/* ---------- Sincronización: elegir datos y deshacer ---------- */
+.sync-err {
+  color: var(--fail);
+}
+.sync-choose {
+  border-color: var(--info-line);
+}
+.sync-undo {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}

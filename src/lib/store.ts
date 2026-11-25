@@ -302,7 +302,12 @@ export async function openBackup(record: Pick<VaultRecord, 'lock' | 'data'>, pat
 }
 
 export function replaceState(next: AppState) {
-  commit(next);
+  // Recuperar un respaldo no apaga la sincronización: tu código se queda (y lo recuperado se sube).
+  const code = snap.state?.settings.syncCode;
+  const settings = { ...next.settings };
+  if (code) settings.syncCode = code;
+  else delete settings.syncCode;
+  commit({ ...next, settings });
 }
 
 // ---------- Estado inicial ----------
