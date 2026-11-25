@@ -9,8 +9,7 @@ import { Icon } from './Icon';
 export const WHATS_NEW = {
   version: __APP_VERSION__,
   items: [
-    'Celular ↔ tablet: en Ajustes, «Pasar a mi otro dispositivo» (con Quick Share) y en el otro «Recibir»: queda igual.',
-    'Usa el mismo patrón en tus dos dispositivos para que sea directo.',
+    'Celular ↔ tablet, solito: en Ajustes crea tu código de sincronización y pon el mismo en tu otro dispositivo. Todo se sincroniza cifrado.',
   ],
 };
 

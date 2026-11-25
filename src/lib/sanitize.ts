@@ -112,6 +112,7 @@ function sanitizeSettings(v: unknown): Settings | null {
     grand: sanitizeGrand(v.grand),
     partyBonus: Math.round(num(v.partyBonus, 0, 10000, 0)),
     theme,
+    ...(typeof v.syncCode === 'string' && /^[a-z0-9-]{16,120}$/.test(v.syncCode) ? { syncCode: v.syncCode } : {}),
     autoLockMinutes: Math.round(num(v.autoLockMinutes, 0, 60, 1)),
     createdAt: str(v.createdAt, 40) ?? new Date().toISOString(),
   };

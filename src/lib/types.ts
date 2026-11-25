@@ -54,6 +54,8 @@ export interface Settings {
   /** Opcionales: los estados guardados antes no los tienen (verde y normal). */
   accent?: Accent;
   textSize?: TextSize;
+  /** Código de sincronización celular ↔ tablet (solo dentro de tus datos cifrados). */
+  syncCode?: string;
   autoLockMinutes: number;
   createdAt: string;
   lastBackupAt?: string;

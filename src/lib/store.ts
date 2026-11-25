@@ -96,9 +96,46 @@ export function flush(): Promise<void> {
   return writing;
 }
 
+const commitListeners = new Set<(s: AppState, remote: boolean) => void>();
+let applyingRemote = false;
+
+/** Avisa cada vez que se guarda algo de verdad (no en modo prueba). remote: vino de la nube. */
+export function onCommit(cb: (s: AppState, remote: boolean) => void): () => void {
+  commitListeners.add(cb);
+  return () => commitListeners.delete(cb);
+}
+
 function commit(next: AppState) {
   set({ state: next });
-  if (!snap.test) void persist();
+  if (!snap.test) {
+    void persist();
+    for (const l of commitListeners) l(next, applyingRemote);
+  }
+}
+
+/** Lo que llegó de tu otro dispositivo: se guarda aquí sin volver a subirlo. */
+export function applyRemoteState(next: AppState) {
+  if (snap.phase !== 'unlocked' || snap.test) return;
+  applyingRemote = true;
+  try {
+    commit(next);
+  } finally {
+    applyingRemote = false;
+  }
+}
+
+/** El estado real (null si está bloqueada o en modo prueba). */
+export function realStateForSync(): AppState | null {
+  return snap.phase === 'unlocked' && !snap.test ? snap.state : null;
+}
+
+/** Guarda (o quita) tu código de sincronización dentro de tus datos cifrados. */
+export function setSyncCode(code: string | undefined) {
+  if (!snap.state || snap.test) return;
+  const settings = { ...snap.state.settings };
+  if (code) settings.syncCode = code;
+  else delete settings.syncCode;
+  commit({ ...snap.state, settings });
 }
 
 // ---------- Modo prueba ----------

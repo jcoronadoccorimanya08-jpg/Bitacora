@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { sync } from './lib/syncSetup';
 import { ConfettiHost } from './components/Confetti';
 import { TestBar } from './components/TestBar';
 import { BottomNav, ToastHost, type Tab } from './components/ui';
@@ -81,6 +82,11 @@ export function App() {
       lastToday.current = today;
     }
   }, [today]);
+
+  // Al desbloquear: trae lo último de tu otro dispositivo (y sube lo pendiente).
+  useEffect(() => {
+    if (phase === 'unlocked') void sync.syncNow();
+  }, [phase]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });

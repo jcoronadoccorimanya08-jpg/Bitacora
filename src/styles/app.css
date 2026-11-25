@@ -2919,3 +2919,30 @@ dialog::backdrop {
   font-size: 14px;
   font-weight: 650;
 }
+
+/* =================== Sincronización celular ↔ tablet =================== */
+.sync-card p {
+  margin: 0;
+}
+.sync-fresh {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px dashed var(--line-strong);
+  word-break: break-word;
+  text-align: center;
+}
+.sync-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.sync-code b {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
+}
